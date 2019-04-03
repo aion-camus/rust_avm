@@ -1,0 +1,70 @@
+<project name="org-aion-avm-jni" basedir="." default="build">
+
+    <property name="src.dir" value="src"/>
+    <property name="test.dir" value="test"/>
+    <property name="native.dir" value="native"/>
+    <property name="build.dir" value="build"/>
+    <property name="reports.dir" value="${build.dir}/reports"/>
+    <property name="main.classes.dir" value="${build.dir}/classes/main"/>
+    <property name="test.classes.dir" value="${build.dir}/classes/test"/>
+
+    <path id="avm-classpath">
+        <fileset dir="../aion_vm/build/main">
+            <include name="*.jar"/>
+        </fileset>
+        <fileset dir="../aion_vm/lib">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <target name="compile">
+        <mkdir dir="${main.classes.dir}"/>
+        <javac includeantruntime="false" destdir="${main.classes.dir}" nativeheaderdir="${native.dir}">
+            <src path="${src.dir}"/>
+            <classpath>
+                <path refid="avm-classpath"/>
+            </classpath>
+        </javac>
+
+        <mkdir dir="${test.classes.dir}"/>
+        <javac includeantruntime="false" destdir="${test.classes.dir}">
+            <src path="${test.dir}"/>
+            <classpath>
+                <path refid="avm-classpath"/>
+                <pathelement location="${main.classes.dir}"/>
+            </classpath>
+        </javac>
+
+        <exec executable="g++">
+            <arg line="-std=c++0x -I. -I${java.home}/include -I${java.home}/include/linux -O3 -Wall -fPIC ./native/org_aion_avm_jni_NativeKernelInterface.cpp -L${build.dir} -Wl,--no-undefined -Wl,-soname=libavmjni.so -shared -o ${build.dir}/libavmjni.so"/>
+        </exec>
+    </target>
+
+    <target name="test" depends="compile">
+        <mkdir dir="${reports.dir}"/>
+        <junit printsummary="yes" haltonfailure="yes">
+            <classpath>
+                <path refid="avm-classpath"/>
+                <pathelement location="${main.classes.dir}"/>
+                <pathelement location="${test.classes.dir}"/>
+            </classpath>
+            <batchtest fork="yes" todir="${reports.dir}">
+                <fileset dir="${test.dir}">
+                    <include name="**/NativeCodecTest.java"/>
+                </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="jar" depends="compile">
+        <mkdir dir="${build.dir}"/>
+        <jar destfile="${build.dir}/${ant.project.name}.jar" basedir="${main.classes.dir}"/>
+    </target>
+
+    <target name="build" depends="clean,compile,test,jar"/>
+
+</project>

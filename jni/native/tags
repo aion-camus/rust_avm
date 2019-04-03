@@ -1,0 +1,71 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+ADDRESS_LENGTH	org_aion_avm_jni_NativeKernelInterface.cpp	7;"	d	file:
+AVM_h	avm.h	2;"	d
+Java_org_aion_avm_jni_NativeKernelInterface_createAccount	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_createAccount$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_decreaseBalance	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_decreaseBalance$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_deleteAccount	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_deleteAccount$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_getBalance	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_getBalance$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_getCode	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_getCode$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_getNonce	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT jlong JNICALL Java_org_aion_avm_jni_NativeKernelInterface_getNonce$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_getStorage	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_getStorage$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_hasAccountState	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT jboolean JNICALL Java_org_aion_avm_jni_NativeKernelInterface_hasAccountState$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_increaseBalance	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_increaseBalance$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_incrementNonce	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_incrementNonce$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_putCode	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_putCode$/;"	f
+Java_org_aion_avm_jni_NativeKernelInterface_putStorage	org_aion_avm_jni_NativeKernelInterface.cpp	/^JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_putStorage$/;"	f
+VALUE_LENGTH	org_aion_avm_jni_NativeKernelInterface.cpp	8;"	d	file:
+_Included_org_aion_avm_jni_NativeKernelInterface	org_aion_avm_jni_NativeKernelInterface.h	6;"	d
+avm_address	avm.h	/^struct avm_address$/;"	s
+avm_bytes	avm.h	/^struct avm_bytes$/;"	s
+avm_callbacks	avm.h	/^struct avm_callbacks {$/;"	s
+avm_create_account_fn	avm.h	/^typedef void (*avm_create_account_fn)(const void *handle, const struct avm_address *address);$/;"	t
+avm_decrease_balance_fn	avm.h	/^typedef void (*avm_decrease_balance_fn)(const void *handle, const struct avm_address *address,$/;"	t
+avm_delete_account_fn	avm.h	/^typedef void (*avm_delete_account_fn)(const void *handle, const struct avm_address *address);$/;"	t
+avm_get_balance_fn	avm.h	/^typedef struct avm_value (*avm_get_balance_fn)(const void *handle, const struct avm_address *address);$/;"	t	typeref:struct:avm_get_balance_fn
+avm_get_code_fn	avm.h	/^typedef struct avm_bytes (*avm_get_code_fn)(const void *handle, const struct avm_address *address);$/;"	t	typeref:struct:avm_get_code_fn
+avm_get_nonce_fn	avm.h	/^typedef u64 (*avm_get_nonce_fn)(const void *handle, const struct avm_address *address);$/;"	t
+avm_get_storage_fn	avm.h	/^typedef struct avm_bytes (*avm_get_storage_fn)(const void *handle, const struct avm_address *address,$/;"	t	typeref:struct:avm_get_storage_fn
+avm_has_account_state_fn	avm.h	/^typedef u32 (*avm_has_account_state_fn)(const void *handle, const struct avm_address *address);$/;"	t
+avm_increase_balance_fn	avm.h	/^typedef void (*avm_increase_balance_fn)(const void *handle, const struct avm_address *address,$/;"	t
+avm_increment_nonce_fn	avm.h	/^typedef void (*avm_increment_nonce_fn)(const void *handle, const struct avm_address *address);$/;"	t
+avm_put_code_fn	avm.h	/^typedef void (*avm_put_code_fn)(const void *handle, const struct avm_address *address,$/;"	t
+avm_put_storage_fn	avm.h	/^typedef void (*avm_put_storage_fn)(const void *handle, const struct avm_address *address,$/;"	t
+avm_value	avm.h	/^struct avm_value$/;"	s
+bytes	avm.h	/^    u8 bytes[32];$/;"	m	struct:avm_address
+bytes	avm.h	/^    u8 bytes[32];$/;"	m	struct:avm_value
+callbacks	org_aion_avm_jni_NativeKernelInterface.cpp	/^struct avm_callbacks callbacks;$/;"	v	typeref:struct:avm_callbacks
+create_account	avm.h	/^    avm_create_account_fn       create_account;$/;"	m	struct:avm_callbacks
+decrease_balance	avm.h	/^    avm_decrease_balance_fn     decrease_balance;$/;"	m	struct:avm_callbacks
+delete_account	avm.h	/^    avm_delete_account_fn       delete_account;$/;"	m	struct:avm_callbacks
+get_balance	avm.h	/^    avm_get_balance_fn          get_balance;$/;"	m	struct:avm_callbacks
+get_code	avm.h	/^    avm_get_code_fn             get_code;$/;"	m	struct:avm_callbacks
+get_nonce	avm.h	/^    avm_get_nonce_fn            get_nonce;$/;"	m	struct:avm_callbacks
+get_storage	avm.h	/^    avm_get_storage_fn          get_storage;$/;"	m	struct:avm_callbacks
+has_account_state	avm.h	/^    avm_has_account_state_fn    has_account_state;$/;"	m	struct:avm_callbacks
+i16	avm.h	/^typedef int16_t  i16;$/;"	t
+i32	avm.h	/^typedef int32_t  i32;$/;"	t
+i64	avm.h	/^typedef int64_t  i64;$/;"	t
+i8	avm.h	/^typedef int8_t   i8;$/;"	t
+increase_balance	avm.h	/^    avm_increase_balance_fn     increase_balance;$/;"	m	struct:avm_callbacks
+increment_nonce	avm.h	/^    avm_increment_nonce_fn      increment_nonce;$/;"	m	struct:avm_callbacks
+is_null	org_aion_avm_jni_NativeKernelInterface.cpp	/^bool is_null(avm_bytes *bytes) {$/;"	f
+length	avm.h	/^    u32 length; \/\/ the array length$/;"	m	struct:avm_bytes
+load_address	org_aion_avm_jni_NativeKernelInterface.cpp	/^struct avm_address load_address(JNIEnv *env, jbyteArray address)$/;"	f
+load_bytes	org_aion_avm_jni_NativeKernelInterface.cpp	/^struct avm_bytes load_bytes(JNIEnv *env, jbyteArray bytes) {$/;"	f
+load_value	org_aion_avm_jni_NativeKernelInterface.cpp	/^struct avm_value load_value(JNIEnv *env, jbyteArray value)$/;"	f
+new_fixed_bytes	org_aion_avm_jni_NativeKernelInterface.cpp	/^struct avm_bytes new_fixed_bytes(u32 length) {$/;"	f
+new_null_bytes	org_aion_avm_jni_NativeKernelInterface.cpp	/^struct avm_bytes new_null_bytes() {$/;"	f
+pointer	avm.h	/^    u8 *pointer;  \/\/ the memory address of the array, or NULL$/;"	m	struct:avm_bytes
+put_code	avm.h	/^    avm_put_code_fn             put_code;$/;"	m	struct:avm_callbacks
+put_storage	avm.h	/^    avm_put_storage_fn          put_storage;$/;"	m	struct:avm_callbacks
+release_bytes	org_aion_avm_jni_NativeKernelInterface.cpp	/^void release_bytes(struct avm_bytes *bytes) {$/;"	f
+to_jbyteArray	org_aion_avm_jni_NativeKernelInterface.cpp	/^jbyteArray to_jbyteArray(JNIEnv *env, u8 *ptr, u32 size) {$/;"	f
+u16	avm.h	/^typedef uint16_t u16;$/;"	t
+u32	avm.h	/^typedef uint32_t u32;$/;"	t
+u64	avm.h	/^typedef uint64_t u64;$/;"	t
+u8	avm.h	/^typedef uint8_t  u8;$/;"	t

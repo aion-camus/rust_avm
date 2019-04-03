@@ -1,0 +1,10 @@
+[package]
+name = "rust"
+version = "0.1.0"
+authors = ["Yulong Wu <yulong@aion.network>"]
+
+[dependencies]
+rjni = { path = "rjni" }
+libc = "*"
+hex = "0.3.2"
+num-bigint = "0.2"
