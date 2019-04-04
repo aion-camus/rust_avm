@@ -310,3 +310,23 @@ JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_touchAccount
 
     callbacks.touch_account((void *)handle, &a, substate_index);
 }
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    sendSignal
+ * Signature: (JI)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_sendSignal
+  (JNIEnv *env, jclass clazz, jlong handle, jint signal_num)
+{
+    // ask the client for storage value
+    struct avm_bytes v = callbacks.send_signal((void *)handle, signal_num);
+
+    // convert into JVM byte array.
+    jbyteArray ret = is_null(&v) ? NULL : to_jbyteArray(env, v.pointer, v.length);
+
+    // release the buffer
+    release_bytes(&v);
+
+    return ret;
+}

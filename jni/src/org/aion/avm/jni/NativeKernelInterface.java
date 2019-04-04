@@ -30,6 +30,10 @@ public class NativeKernelInterface implements KernelInterface {
         touchAccount(handle, addr, index_of_substate);
     }
 
+    public byte[] sendSignal(int sig_num) {
+        return sendSignal(handle, sig_num);
+    }
+
     @Override
     public void createAccount(Address address) {
         createAccount(handle, address.toBytes());
@@ -196,4 +200,6 @@ public class NativeKernelInterface implements KernelInterface {
     public static native void incrementNonce(long handle, byte[] address);
 
     public static native void touchAccount(long handle, byte[] address, int idx);
+
+    public static native byte[] sendSignal(long handle, int sig);
 }
