@@ -38,8 +38,11 @@ public class NativeTransactionExecutor {
 
             // submit the transactions to a newly created avm for execution
             NativeKernelInterface kernel = new NativeKernelInterface(handle);
-            AvmImpl avm = CommonAvmFactory.buildAvmInstanceForConfiguration(new AionCapabilities(), new AvmConfiguration());
-            SimpleFuture<TransactionResult>[] futures = avm.run(kernel, contexts);
+            Substate substate = new Substate(kernel);
+            AvmConfiguration config = new AvmConfiguration();
+            config.enableVerboseConcurrentExecutor = true;
+            AvmImpl avm = CommonAvmFactory.buildAvmInstanceForConfiguration(new AionCapabilities(), config);
+            SimpleFuture<TransactionResult>[] futures = avm.run(substate, contexts);
 
             // wait for the transaction results and serialize them into bytes
             NativeEncoder encoder = new NativeEncoder();
@@ -55,8 +58,10 @@ public class NativeTransactionExecutor {
                 for (byte[] addr: transactionKernel.getTouchedAccounts()) {
                     kernel.touchAccount(addr, i);
                 }
-                transactionKernel.commit();
+
+                transactionKernel.commitTo(kernel);
             }
+            //substate.commit();
             avm.shutdown();
 
             return encoder.toByteArray();

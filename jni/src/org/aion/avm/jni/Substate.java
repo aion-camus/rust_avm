@@ -8,14 +8,21 @@ import java.util.Set;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 import java.math.BigInteger;
+import java.util.HashMap;
 
 public class Substate implements KernelInterface {
     final private KernelInterface parent;
     private final List<Consumer<KernelInterface>> writeLog;
+    /// cached nonces
+    private final HashMap<Address, BigInteger> nonces;
+    /// cached balances
+    private final HashMap<Address, BigInteger> balances;
 
-    public Substate(Substate parent) {
+    public Substate(KernelInterface parent) {
         this.parent = parent;
         this.writeLog = new ArrayList<>();
+        this.nonces = new HashMap<>();
+        this.balances = new HashMap<>();
     }
 
     @Override
@@ -67,12 +74,17 @@ public class Substate implements KernelInterface {
 
     @Override
     public boolean accountNonceEquals(Address address, BigInteger nonce) {
-        return this.parent.accountNonceEquals(address, nonce);
+        return getNonce(address).compareTo(nonce) == 0;
     }
 
     @Override
     public BigInteger getBalance(Address address) {
-        return this.parent.getBalance(address);
+        BigInteger balance = this.balances.get(address);
+        if (null == balance) {
+            balance = this.parent.getBalance(address);
+            this.balances.put(address, balance);
+        }
+        return balance;
     }
 
     @Override
@@ -81,11 +93,19 @@ public class Substate implements KernelInterface {
             kernel.adjustBalance(address, delta);
         };
         writeLog.add(write);
+
+        this.balances.put(address, getBalance(address).add(delta));
     }
 
     @Override
     public BigInteger getNonce(Address address) {
-        return this.parent.getNonce(address);
+        System.out.println(address);
+        BigInteger nonce = this.nonces.get(address);
+        if (nonce == null) {
+            nonce = this.parent.getNonce(address);
+            this.nonces.put(address, nonce);
+        }
+        return nonce;
     }
 
     @Override
@@ -94,11 +114,16 @@ public class Substate implements KernelInterface {
             kernel.incrementNonce(address);
         };
         writeLog.add(write);
+        BigInteger nonce = this.nonces.get(address);
+        if (nonce == null) {
+            nonce = this.parent.getNonce(address);
+        }
+        this.nonces.put(address, nonce.add(BigInteger.ONE));
     }
 
     @Override
     public boolean accountBalanceIsAtLeast(Address address, BigInteger amount) {
-        return this.parent.accountBalanceIsAtLeast(address, amount);
+        return getBalance(address).compareTo(amount) >= 0;
     }
     
     @Override
@@ -168,5 +193,9 @@ public class Substate implements KernelInterface {
     public void commitTo(KernelInterface target) { }
 
     @Override
-    public void commit() { }
+    public void commit() {
+        for (Consumer<KernelInterface> mutation : this.writeLog) {
+            mutation.accept(this.parent);
+        }
+    }
 }

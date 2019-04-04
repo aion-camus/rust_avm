@@ -80,6 +80,7 @@ public class AvmImpl implements AvmInternal {
         public void run() {
             IInstrumentation instrumentation = AvmImpl.this.instrumentationFactory.createInstrumentation();
             InstrumentationHelpers.attachThread(instrumentation);
+            System.out.println("start new thread");
             try {
                 // Run as long as we have something to do (null means shutdown).
                 AvmTransactionResult outgoingResult = null;
