@@ -60,8 +60,8 @@ public class NativeTransactionExecutor {
                 }
 
                 transactionKernel.commitTo(kernel);
-                kernel.sendSignal(0);   // 0: should commit state; and return state root
-                //encoder.encodeBytes(state_root);
+                byte[] state_root = kernel.sendSignal(0);   // 0: should commit state; and return state root
+                encoder.encodeBytes(state_root);
             }
             kernel.sendSignal(-1);
             // substate.commit();

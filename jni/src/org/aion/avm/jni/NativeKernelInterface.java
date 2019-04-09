@@ -202,4 +202,6 @@ public class NativeKernelInterface implements KernelInterface {
     public static native void touchAccount(long handle, byte[] address, int idx);
 
     public static native byte[] sendSignal(long handle, int sig);
+
+    public static native byte[] contract_address(byte[] sender, byte[] nonce);
 }

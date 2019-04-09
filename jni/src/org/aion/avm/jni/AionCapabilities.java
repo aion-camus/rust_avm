@@ -29,6 +29,9 @@ public class AionCapabilities implements IExternalCapabilities {
 
     @Override
     public Address generateContractAddress(TransactionInterface txMessage) {
-        return txMessage.getDestinationAddress();
+        byte[] sender = txMessage.getSenderAddress().toBytes();
+        byte[] nonce = txMessage.getNonce();
+        NativeKernelInterface kernel = new NativeKernelInterface(0);
+        return new Address(kernel.contract_address(sender, nonce));
     }
 }

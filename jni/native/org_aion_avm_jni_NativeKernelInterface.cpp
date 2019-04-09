@@ -330,3 +330,23 @@ JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_sendSig
 
     return ret;
 }
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    contract_address
+ * Signature: ([B[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_contract_1address
+  (JNIEnv *env, jclass clazz, jbyteArray sender, jbyteArray nonce)
+{
+  struct avm_address a = load_address(env, sender);
+  struct avm_bytes n = load_bytes(env, nonce);
+
+  struct avm_bytes v = callbacks.contract_address(&a, &n);
+
+  jbyteArray ret = is_null(&v)? NULL:to_jbyteArray(env, v.pointer, v.length);
+
+  release_bytes(&v);
+
+  return ret;
+}

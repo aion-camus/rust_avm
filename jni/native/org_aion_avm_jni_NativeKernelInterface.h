@@ -119,6 +119,14 @@ JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_touchAccount
 JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_sendSignal
   (JNIEnv *, jclass, jlong, jint);
 
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    contract_address
+ * Signature: ([B[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_contract_1address
+  (JNIEnv *, jclass, jbyteArray, jbyteArray);
+
 #ifdef __cplusplus
 }
 #endif

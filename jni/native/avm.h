@@ -139,6 +139,8 @@ typedef void (*avm_touch_account_fn)(const void *handle, const struct avm_addres
 
 typedef struct avm_bytes (*avm_send_signal_fn)(const void *handle, const i32 sig_num);
 
+typedef struct avm_bytes (*avm_contract_address_fn)(const struct avm_address *address, const struct avm_bytes *nonce);
+
 /**
  * A data structure holds all the callback function pointers.
  */
@@ -157,6 +159,7 @@ struct avm_callbacks {
     avm_increment_nonce_fn      increment_nonce;
     avm_touch_account_fn        touch_account;
     avm_send_signal_fn          send_signal;
+    avm_contract_address_fn     contract_address;
 };
 
 typedef struct avm_bytes (*create_contract_fn)(const struct avm_address *address, const uint64_t nonce);
