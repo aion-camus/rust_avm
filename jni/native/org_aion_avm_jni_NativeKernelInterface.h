@@ -113,6 +113,14 @@ JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_touchAccount
 
 /*
  * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    addLog
+ * Signature: (J[BI)V
+ */
+JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_addLog
+  (JNIEnv *, jclass, jlong, jbyteArray, jint);
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
  * Method:    sendSignal
  * Signature: (JI)[B
  */

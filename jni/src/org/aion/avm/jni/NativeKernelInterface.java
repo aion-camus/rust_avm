@@ -30,6 +30,10 @@ public class NativeKernelInterface implements KernelInterface {
         touchAccount(handle, addr, index_of_substate);
     }
 
+    public void addLog(byte[] log, int idx) {
+        addLog(handle, log, idx);
+    }
+
     public byte[] sendSignal(int sig_num) {
         return sendSignal(handle, sig_num);
     }
@@ -199,8 +203,13 @@ public class NativeKernelInterface implements KernelInterface {
 
     public static native void incrementNonce(long handle, byte[] address);
 
+    /// update substates in kernel
     public static native void touchAccount(long handle, byte[] address, int idx);
 
+    // log contains the encoded data(address+topics+data), idx stands for offset of the substate
+    public static native void addLog(long handle, byte[] log, int idx);
+
+    /// helpers to accomplish avm specific tasks
     public static native byte[] sendSignal(long handle, int sig);
 
     public static native byte[] contract_address(byte[] sender, byte[] nonce);

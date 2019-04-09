@@ -4,6 +4,8 @@ import org.aion.vm.api.interfaces.KernelInterface;
 import org.aion.vm.api.interfaces.SimpleFuture;
 import org.aion.vm.api.interfaces.TransactionContext;
 import org.aion.vm.api.interfaces.TransactionResult;
+import org.aion.vm.api.interfaces.IExecutionLog;
+import org.aion.vm.api.interfaces.TransactionSideEffects;
 import org.aion.avm.core.AvmImpl;
 import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.core.IExternalCapabilities;
@@ -57,6 +59,17 @@ public class NativeTransactionExecutor {
                 KernelInterface transactionKernel = r.getKernelInterface();
                 for (byte[] addr: transactionKernel.getTouchedAccounts()) {
                     kernel.touchAccount(addr, i);
+                }
+                
+                TransactionSideEffects sideEffects = contexts[i].getSideEffects();
+                for (IExecutionLog log: sideEffects.getExecutionLogs()) {
+                    NativeEncoder logEncoder = new NativeEncoder();
+                    logEncoder.encodeInt(log.getTopics().size());
+                    for (byte[] topic: log.getTopics()) {
+                        logEncoder.encodeBytes(topic);
+                    }
+                    logEncoder.encodeBytes(log.getData());
+                    kernel.addLog(logEncoder.toByteArray(), i);
                 }
 
                 transactionKernel.commitTo(kernel);

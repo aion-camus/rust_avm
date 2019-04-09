@@ -350,3 +350,15 @@ JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_contrac
 
   return ret;
 }
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    addLog
+ * Signature: (J[BI)V
+ */
+JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_addLog
+  (JNIEnv *env, jclass clazz, jlong handle, jbyteArray avmLog, jint index)
+{
+  struct avm_bytes n = load_bytes(env, avmLog);
+  callbacks.add_log((void *)handle, &n, index);
+}
