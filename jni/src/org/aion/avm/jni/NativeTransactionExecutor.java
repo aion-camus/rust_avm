@@ -64,6 +64,7 @@ public class NativeTransactionExecutor {
                 TransactionSideEffects sideEffects = contexts[i].getSideEffects();
                 for (IExecutionLog log: sideEffects.getExecutionLogs()) {
                     NativeEncoder logEncoder = new NativeEncoder();
+                    logEncoder.encodeBytes(log.getSourceAddress().toBytes());
                     logEncoder.encodeInt(log.getTopics().size());
                     for (byte[] topic: log.getTopics()) {
                         logEncoder.encodeBytes(topic);
