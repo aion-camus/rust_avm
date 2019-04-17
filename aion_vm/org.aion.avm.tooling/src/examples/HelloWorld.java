@@ -1,6 +1,6 @@
 package examples;
 
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIDecoder;
 
 /**
@@ -9,12 +9,12 @@ import org.aion.avm.userlib.abi.ABIDecoder;
 public class HelloWorld {
 
     public static void sayHello() {
-        BlockchainRuntime.println("Hello World!");
+        Blockchain.println("Hello World!");
     }
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {

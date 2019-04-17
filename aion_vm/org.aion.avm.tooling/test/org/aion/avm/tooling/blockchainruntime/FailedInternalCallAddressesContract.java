@@ -1,9 +1,9 @@
 package org.aion.avm.tooling.blockchainruntime;
 
 import java.math.BigInteger;
-import org.aion.avm.api.Address;
-import org.aion.avm.api.BlockchainRuntime;
-import org.aion.avm.api.Result;
+import avm.Address;
+import avm.Blockchain;
+import avm.Result;
 import org.aion.avm.tooling.abi.Callable;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
@@ -29,8 +29,13 @@ public class FailedInternalCallAddressesContract {
                 reportForThisContract = getAddresses();
             }
 
-            byte[] data = ABIEncoder.encodeMethodArguments("recurseAndTrackAddresses", otherContracts, currentDepth + 1, recurseFirst);
-            Result result = BlockchainRuntime.call(otherContracts[currentDepth], BigInteger.ZERO, data, BlockchainRuntime.getRemainingEnergy());
+            byte[] methodNameBytes = ABIEncoder.encodeOneString("recurseAndTrackAddresses");
+            byte[] argBytes1 = ABIEncoder.encodeOneAddressArray(otherContracts);
+            byte[] argBytes2 = ABIEncoder.encodeOneInteger(currentDepth + 1);
+            byte[] argBytes3 = ABIEncoder.encodeOneBoolean(recurseFirst);
+            byte[] data = concatenateArrays(methodNameBytes, argBytes1, argBytes2, argBytes3);
+
+            Result result = Blockchain.call(otherContracts[currentDepth], BigInteger.ZERO, data, Blockchain.getRemainingEnergy());
 
             // check the revert on the deepest child.
             if (currentDepth == otherContracts.length - 1) {
@@ -40,7 +45,7 @@ public class FailedInternalCallAddressesContract {
             } else {
                 // not the deepest child, so something actually went wrong...
                 if (!result.isSuccess()) {
-                    BlockchainRuntime.revert();
+                    Blockchain.revert();
                 }
             }
 
@@ -53,10 +58,11 @@ public class FailedInternalCallAddressesContract {
                 return reportForThisContract;
             }
 
-            Address[] reportForOtherContracts = (Address[]) ABIDecoder.decodeOneObject(result.getReturnData());
+            ABIDecoder decoder = new ABIDecoder(result.getReturnData());
+            Address[] reportForOtherContracts = decoder.decodeOneAddressArray();
             return joinArrays(reportForThisContract, reportForOtherContracts);
         } else {
-            BlockchainRuntime.revert();
+            Blockchain.revert();
             return null;
         }
     }
@@ -68,9 +74,9 @@ public class FailedInternalCallAddressesContract {
      */
     private static Address[] getAddresses() {
         Address[] addresses = new Address[3];
-        addresses[0] = BlockchainRuntime.getOrigin();
-        addresses[1] = BlockchainRuntime.getCaller();
-        addresses[2] = BlockchainRuntime.getAddress();
+        addresses[0] = Blockchain.getOrigin();
+        addresses[1] = Blockchain.getCaller();
+        addresses[2] = Blockchain.getAddress();
         return addresses;
     }
 
@@ -91,4 +97,17 @@ public class FailedInternalCallAddressesContract {
         return array;
     }
 
+    private static byte[] concatenateArrays(byte[]... arrays) {
+        int length = 0;
+        for(byte[] array : arrays) {
+            length += array.length;
+        }
+        byte[] result = new byte[length];
+        int writtenSoFar = 0;
+        for(byte[] array : arrays) {
+            System.arraycopy(array, 0, result, writtenSoFar, array.length);
+            writtenSoFar += array.length;
+        }
+        return result;
+    }
 }

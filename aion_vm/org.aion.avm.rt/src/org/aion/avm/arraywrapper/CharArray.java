@@ -63,7 +63,6 @@ public class CharArray extends Array {
     }
 
     public CharArray(char[] underlying) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.CharArray_avm_constructor_1);
         RuntimeAssertionError.assertTrue(null != underlying);
         this.underlying = underlying;
     }
@@ -96,8 +95,8 @@ public class CharArray extends Array {
     // Persistent Memory Support
     //========================================================
 
-    public CharArray(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public CharArray(Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {

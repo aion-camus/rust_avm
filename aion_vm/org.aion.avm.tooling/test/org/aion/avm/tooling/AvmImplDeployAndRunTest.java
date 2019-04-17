@@ -2,9 +2,8 @@ package org.aion.avm.tooling;
 
 import legacy_examples.deployAndRunTest.DeployAndRunTarget;
 import legacy_examples.helloworld.HelloWorld;
-import org.aion.avm.api.Address;
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.userlib.abi.ABIEncoder;
+import avm.Address;
+import org.aion.avm.core.util.ABIUtil;
 import org.aion.kernel.AvmTransactionResult;
 import org.aion.kernel.TestingKernel;
 import org.aion.vm.api.interfaces.TransactionResult;
@@ -32,7 +31,7 @@ public class AvmImplDeployAndRunTest {
 
     @Test
     public void testDeployWithClinitCall() {
-        byte[] arguments = ABIEncoder.encodeDeploymentArguments(100);
+        byte[] arguments = ABIUtil.encodeDeploymentArguments(100);
         byte[] txData = avmRule.getDappBytes(HelloWorld.class, arguments);
 
         TransactionResult result = avmRule.deploy(from, BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
@@ -46,19 +45,19 @@ public class AvmImplDeployAndRunTest {
         assertEquals(AvmTransactionResult.Code.SUCCESS, deployResult.getResultCode());
 
         // call the "run" method
-        byte[] txData = ABIEncoder.encodeMethodArguments("run");
+        byte[] txData = ABIUtil.encodeMethodArguments("run");
         TransactionResult result = avmRule.call(from, new Address(deployResult.getReturnData()), BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        assertEquals("Hello, world!", new String((byte[]) ABIDecoder.decodeOneObject(result.getReturnData())));
+        assertEquals("Hello, world!", new String((byte[]) ABIUtil.decodeOneObject(result.getReturnData())));
 
         // test another method call, "add" with arguments
-        txData = ABIEncoder.encodeMethodArguments("add", 123, 1);
+        txData = ABIUtil.encodeMethodArguments("add", 123, 1);
         result = avmRule.call(from, new Address(deployResult.getReturnData()), BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
 
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        assertEquals(124, ABIDecoder.decodeOneObject(result.getReturnData()));
+        assertEquals(124, ABIUtil.decodeOneObject(result.getReturnData()));
     }
 
     public TransactionResult deployTheDeployAndRunTest() {
@@ -72,13 +71,13 @@ public class AvmImplDeployAndRunTest {
         assertEquals(AvmTransactionResult.Code.SUCCESS, deployResult.getResultCode());
 
         // test encode method arguments with "encodeArgs"
-        byte[] txData = ABIEncoder.encodeMethodArguments("encodeArgs");
+        byte[] txData = ABIUtil.encodeMethodArguments("encodeArgs");
         TransactionResult result = avmRule.call(from, new Address(deployResult.getReturnData()), BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
 
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        byte[] expected = ABIEncoder.encodeMethodArguments("addArray", new int[]{123, 1}, 5);
-        boolean correct = Arrays.equals((byte[])(ABIDecoder.decodeOneObject(result.getReturnData())), expected);
+        byte[] expected = ABIUtil.encodeMethodArguments("addArray", new int[]{123, 1}, 5);
+        boolean correct = Arrays.equals((byte[])(ABIUtil.decodeOneObject(result.getReturnData())), expected);
         assertEquals(true, correct);
 
         // test another method call, "addArray" with 1D array arguments
@@ -86,54 +85,54 @@ public class AvmImplDeployAndRunTest {
 
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        assertEquals(129, ABIDecoder.decodeOneObject(result.getReturnData()));
+        assertEquals(129, ABIUtil.decodeOneObject(result.getReturnData()));
 
         // test another method call, "addArray2" with 2D array arguments
         int[][] a = new int[2][];
         a[0] = new int[]{123, 4};
         a[1] = new int[]{1, 2};
-        txData = ABIEncoder.encodeMethodArguments("addArray2", (Object) a);
+        txData = ABIUtil.encodeMethodArguments("addArray2", (Object) a);
         result = avmRule.call(from, new Address(deployResult.getReturnData()), BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        assertEquals(124, ABIDecoder.decodeOneObject(result.getReturnData()));
+        assertEquals(124, ABIUtil.decodeOneObject(result.getReturnData()));
 
         // test another method call, "concatenate" with 2D array arguments and 1D array return data
         char[][] chars = new char[2][];
         chars[0] = "cat".toCharArray();
         chars[1] = "dog".toCharArray();
-        txData = ABIEncoder.encodeMethodArguments("concatenate", (Object) chars);
+        txData = ABIUtil.encodeMethodArguments("concatenate", (Object) chars);
         result = avmRule.call(from, new Address(deployResult.getReturnData()), BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        assertEquals("catdog", new String((char[]) ABIDecoder.decodeOneObject(result.getReturnData())));
+        assertEquals("catdog", new String((char[]) ABIUtil.decodeOneObject(result.getReturnData())));
 
         // test another method call, "concatString" with String array arguments and String return data
-        txData = ABIEncoder.encodeMethodArguments("concatString", "cat", "dog"); // Note - need to cast String[] into Object, to pass it as one argument to the varargs method
+        txData = ABIUtil.encodeMethodArguments("concatString", "cat", "dog"); // Note - need to cast String[] into Object, to pass it as one argument to the varargs method
         result = avmRule.call(from, new Address(deployResult.getReturnData()), BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        assertEquals("catdog", ABIDecoder.decodeOneObject(result.getReturnData()));
+        assertEquals("catdog", ABIUtil.decodeOneObject(result.getReturnData()));
 
         // test another method call, "concatStringArray" with String array arguments and String return data
-        txData = ABIEncoder.encodeMethodArguments("concatStringArray", (Object) new String[]{"cat", "dog"}); // Note - need to cast String[] into Object, to pass it as one argument to the varargs method
+        txData = ABIUtil.encodeMethodArguments("concatStringArray", (Object) new String[]{"cat", "dog"}); // Note - need to cast String[] into Object, to pass it as one argument to the varargs method
         result = avmRule.call(from, new Address(deployResult.getReturnData()), BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        assertEquals("catdog", ((String[])ABIDecoder.decodeOneObject(result.getReturnData()))[0]);
-        assertEquals("perfect", ((String[])ABIDecoder.decodeOneObject(result.getReturnData()))[1]);
+        assertEquals("catdog", ((String[])ABIUtil.decodeOneObject(result.getReturnData()))[0]);
+        assertEquals("perfect", ((String[])ABIUtil.decodeOneObject(result.getReturnData()))[1]);
 
         // test another method call, "swap" with 2D array arguments and 2D array return data
-        txData = ABIEncoder.encodeMethodArguments("swap", (Object) chars);
+        txData = ABIUtil.encodeMethodArguments("swap", (Object) chars);
         result = avmRule.call(from, new Address(deployResult.getReturnData()), BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
 
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        assertEquals("dog", new String(((char[][]) ABIDecoder.decodeOneObject(result.getReturnData()))[0]));
-        assertEquals("cat", new String(((char[][]) ABIDecoder.decodeOneObject(result.getReturnData()))[1]));
+        assertEquals("dog", new String(((char[][]) ABIUtil.decodeOneObject(result.getReturnData()))[0]));
+        assertEquals("cat", new String(((char[][]) ABIUtil.decodeOneObject(result.getReturnData()))[1]));
 
         // test a method call to "setBar", which does not have a return type (void)
-        txData = ABIEncoder.encodeMethodArguments("setBar", 20);
+        txData = ABIUtil.encodeMethodArguments("setBar", 20);
         result = avmRule.call(from, new Address(deployResult.getReturnData()), BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
@@ -155,11 +154,41 @@ public class AvmImplDeployAndRunTest {
         result = avmRule.balanceTransfer(account1, account2, BigInteger.valueOf(1000L), 21000, energyPrice).getTransactionResult();
 
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        // AKI-33: Our userlib is receiving a lot of changes while our tooling to prune on deployment is not yet ready so we
-        // TEMPORARILY reduce this cost in order to improve testability.
-        long basicCost = 21000L / 10L;
+        long basicCost = 21000L;
         assertEquals(BigInteger.valueOf(100000L - 1000L - energyPrice * basicCost), avmRule.kernel.getBalance(org.aion.types.Address.wrap(account1.unwrap())));
         assertEquals(BigInteger.valueOf(1000L), avmRule.kernel.getBalance(org.aion.types.Address.wrap(account2.unwrap())));
+    }
+
+    @Test
+    public void testBalanceTransferUpperBound() {
+        Address from = avmRule.getBigPreminedAccount();
+        assertEquals(TestingKernel.PREMINED_BIG_AMOUNT, avmRule.kernel.getBalance(org.aion.types.Address.wrap(from.unwrap())));
+
+        Address account1 = avmRule.getRandomAddress(BigInteger.ZERO);
+        long maxEnergyPrice = Long.MAX_VALUE;
+        TransactionResult result = avmRule.balanceTransfer(from, account1, BigInteger.valueOf(100_000L), 21_000L, maxEnergyPrice).getTransactionResult();
+
+        assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
+        assertEquals(BigInteger.valueOf(100000L), avmRule.kernel.getBalance(org.aion.types.Address.wrap(account1.unwrap())));
+        BigInteger preminedAmountRemained = TestingKernel.PREMINED_BIG_AMOUNT.subtract(BigInteger.valueOf(100_000L)).subtract(BigInteger.valueOf(21_000L).multiply(BigInteger.valueOf(maxEnergyPrice)));
+        assertEquals(preminedAmountRemained , avmRule.kernel.getBalance(org.aion.types.Address.wrap(from.unwrap())));
+
+    }
+
+    @Test
+    public void testBalanceTransferUpperBoundRefund() {
+        Address from = avmRule.getBigPreminedAccount();
+        assertEquals(TestingKernel.PREMINED_BIG_AMOUNT, avmRule.kernel.getBalance(org.aion.types.Address.wrap(from.unwrap())));
+
+        Address account1 = avmRule.getRandomAddress(BigInteger.ZERO);
+        long maxEnergyPrice = Long.MAX_VALUE;
+        TransactionResult result = avmRule.balanceTransfer(from, account1, BigInteger.valueOf(100_000L), 2_000_000L, maxEnergyPrice).getTransactionResult();
+
+        assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
+        assertEquals(BigInteger.valueOf(100_000L), avmRule.kernel.getBalance(org.aion.types.Address.wrap(account1.unwrap())));
+        BigInteger preminedAmountRemained = TestingKernel.PREMINED_BIG_AMOUNT.subtract(BigInteger.valueOf(100_000L)).subtract(BigInteger.valueOf(21_000L).multiply(BigInteger.valueOf(maxEnergyPrice)));
+        assertEquals(preminedAmountRemained , avmRule.kernel.getBalance(org.aion.types.Address.wrap(from.unwrap())));
+
     }
 
     @Test

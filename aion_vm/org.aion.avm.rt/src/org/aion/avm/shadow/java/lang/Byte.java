@@ -1,9 +1,7 @@
 package org.aion.avm.shadow.java.lang;
 
-import org.aion.avm.internal.IDeserializer;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.IObject;
-import org.aion.avm.internal.IPersistenceToken;
 import org.aion.avm.internal.RuntimeAssertionError;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
@@ -17,7 +15,7 @@ public final class Byte extends Object implements Comparable<Byte> {
 
     public static final byte avm_MAX_VALUE = java.lang.Byte.MAX_VALUE;
 
-    public static final Class<Byte> avm_TYPE = new Class(java.lang.Byte.TYPE);;
+    public static final Class<Byte> avm_TYPE = new Class(java.lang.Byte.TYPE);
 
     public static String avm_toString(byte b) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Byte_avm_toString);
@@ -29,7 +27,7 @@ public final class Byte extends Object implements Comparable<Byte> {
         return internalValueOf(b);
     }
 
-    public static byte avm_parseByte(String s, int radix){
+    public static byte avm_parseByte(String s, int radix) throws NumberFormatException {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Byte_avm_parseByte);
         return internalParseByte(s, radix);
     }
@@ -185,8 +183,8 @@ public final class Byte extends Object implements Comparable<Byte> {
     // Methods below are used by runtime and test code only!
     //========================================================
 
-    public Byte(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public Byte(java.lang.Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     private byte v;

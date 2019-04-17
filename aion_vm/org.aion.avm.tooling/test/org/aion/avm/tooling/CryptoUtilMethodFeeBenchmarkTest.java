@@ -1,6 +1,6 @@
 package org.aion.avm.tooling;
 
-import org.aion.avm.userlib.abi.ABIEncoder;
+import org.aion.avm.core.util.ABIUtil;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.AvmImpl;
 import org.aion.avm.core.CommonAvmFactory;
@@ -9,7 +9,6 @@ import org.aion.avm.core.util.CodeAndArguments;
 import org.aion.avm.core.util.Helpers;
 import org.aion.kernel.*;
 import org.aion.kernel.AvmTransactionResult.Code;
-import org.aion.vm.api.interfaces.TransactionContext;
 import org.aion.vm.api.interfaces.TransactionResult;
 import org.junit.After;
 import org.junit.Assert;
@@ -95,8 +94,7 @@ public class CryptoUtilMethodFeeBenchmarkTest {
         this.kernel = new TestingKernel();
         this.avm = CommonAvmFactory.buildAvmInstanceForConfiguration(new StandardCapabilities(), new AvmConfiguration());
         Transaction tx = Transaction.create(deployer, kernel.getNonce(deployer), BigInteger.ZERO, txData, energyLimit, energyPrice);
-        TransactionContextImpl context = TransactionContextImpl.forExternalTransaction(tx, block);
-        dappAddress = org.aion.types.Address.wrap(avm.run(this.kernel, new TransactionContext[] {context})[0].get().getReturnData());
+        dappAddress = org.aion.types.Address.wrap(avm.run(this.kernel, new Transaction[] {tx})[0].get().getReturnData());
         Assert.assertNotNull(dappAddress);
     }
 
@@ -191,8 +189,10 @@ public class CryptoUtilMethodFeeBenchmarkTest {
      */
     @Test
     public void testAll3HashFunctionsAndCompare2(){
-        int warmUp = 1000;
-        int loopCount = 1000000;
+        //following values should be increased for a more accurate result
+        // recommended values are 1000, 1000000
+        int warmUp = WARMUP_COUNT;
+        int loopCount = LOOP_COUNT;
         byte[] msg = hashMessageLong; // change this message to see variance in result
 
         // warm up blake2b, then make multiple calls within the dapp
@@ -222,8 +222,9 @@ public class CryptoUtilMethodFeeBenchmarkTest {
      */
     @Test
     public void testEdverifyComparisionToBlake2bInDepth(){
-        int warmUp = 1000;
-        int loopCount = 10000;
+        //following values should be increased for a more accurate result
+        int warmUp = WARMUP_COUNT;
+        int loopCount = LOOP_COUNT;
         byte[] msg = hashMessageLong; // change this message to see variance in result
 
         // warm up blake2b, then make multiple calls within the dapp
@@ -287,10 +288,10 @@ public class CryptoUtilMethodFeeBenchmarkTest {
     private long getCallTime(String methodName, byte[] message, int count){
         long st;
         long et;
-        TransactionContextImpl context = setupTransactionContext(methodName,count, message);
+        Transaction tx = setupTransaction(methodName,count, message);
 
         st = System.nanoTime();
-        TransactionResult result = avm.run(this.kernel, new TransactionContext[]{context})[0].get();
+        TransactionResult result = avm.run(this.kernel, new Transaction[]{tx})[0].get();
         et = System.nanoTime();
 
         Assert.assertEquals(result.getResultCode(), Code.SUCCESS);
@@ -298,10 +299,9 @@ public class CryptoUtilMethodFeeBenchmarkTest {
         return et - st;
     }
 
-    private TransactionContextImpl setupTransactionContext(String methodName, java.lang.Object... arguments){
-        byte[] txData = ABIEncoder.encodeMethodArguments(methodName, arguments);
-        Transaction tx = Transaction.call(deployer, dappAddress, kernel.getNonce(deployer), BigInteger.ZERO, txData, energyLimit, energyPrice);
-        return TransactionContextImpl.forExternalTransaction(tx, block);
+    private Transaction setupTransaction(String methodName, java.lang.Object... arguments){
+        byte[] txData = ABIUtil.encodeMethodArguments(methodName, arguments);
+        return Transaction.call(deployer, dappAddress, kernel.getNonce(deployer), BigInteger.ZERO, txData, energyLimit, energyPrice);
     }
 
     private String[] generateListOfStrings(int count){

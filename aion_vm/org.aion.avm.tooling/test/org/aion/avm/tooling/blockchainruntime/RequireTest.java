@@ -1,11 +1,11 @@
 package org.aion.avm.tooling.blockchainruntime;
 
+import avm.Blockchain;
+import org.aion.avm.core.util.ABIUtil;
 import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
-import org.aion.avm.core.dappreading.JarBuilder;
+import avm.Address;
 import org.aion.avm.tooling.AvmRule;
 import org.aion.avm.tooling.RedirectContract;
-import org.aion.avm.core.util.CodeAndArguments;
 import org.aion.kernel.AvmTransactionResult.Code;
 import org.aion.vm.api.interfaces.TransactionResult;
 import org.junit.BeforeClass;
@@ -18,7 +18,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests the {@link org.aion.avm.api.BlockchainRuntime#require(boolean)} method.
+ * Tests the {@link Blockchain#require(boolean)} method.
  */
 public class RequireTest {
     @ClassRule
@@ -85,13 +85,13 @@ public class RequireTest {
     }
 
     private static TransactionResult deployContractAndTriggerClinitRequire(boolean condition) {
-        byte[] clinitData = ABIEncoder.encodeOneObject(condition);
-        byte[] data = new CodeAndArguments(getRawJarBytesForRequireContract(), clinitData).encodeToBytes();
+        byte[] clinitData = ABIEncoder.encodeOneBoolean(condition);
+        byte[] data = getRawJarBytesForRequireContract(clinitData);
         return avmRule.deploy(from, BigInteger.ZERO, data, energyLimit, energyPrice).getTransactionResult();
     }
 
     private static void deployContract() {
-        byte[] jar = new CodeAndArguments(getRawJarBytesForRequireContract(), new byte[0]).encodeToBytes();
+        byte[] jar = getRawJarBytesForRequireContract(new byte[0]);
         TransactionResult result = avmRule.deploy(from, BigInteger.ZERO, jar, energyLimit, energyPrice).getTransactionResult();
         assertTrue(result.getResultCode().isSuccess());
         contract = new Address(result.getReturnData());
@@ -103,13 +103,12 @@ public class RequireTest {
     }
 
     private TransactionResult callContractRequireAndAttemptToCatchExceptionMethod() {
-        byte[] callData = ABIEncoder.encodeMethodArguments("requireAndTryToCatch");
+        byte[] callData = ABIUtil.encodeMethodArguments("requireAndTryToCatch");
         return avmRule.call(from, contract, BigInteger.ZERO, callData, energyLimit, energyPrice).getTransactionResult();
     }
 
     private static Address deployRedirectContract() {
-        byte[] jar = JarBuilder.buildJarForMainAndClasses(RedirectContract.class);
-        jar = new CodeAndArguments(jar, new byte[0]).encodeToBytes();
+        byte[] jar = avmRule.getDappBytes(RedirectContract.class, new byte[0]);
 
         TransactionResult result = avmRule.deploy(from, BigInteger.ZERO, jar, energyLimit, energyPrice).getTransactionResult();
         assertTrue(result.getResultCode().isSuccess());
@@ -123,15 +122,15 @@ public class RequireTest {
 
     private byte[] encodeRedirectCallArgs(boolean condition) {
         byte[] args = getAbiEncodingOfRequireContractCall(condition);
-        return ABIEncoder.encodeMethodArguments("callOtherContractAndRequireItIsSuccess", contract, 0L, args);
+        return ABIUtil.encodeMethodArguments("callOtherContractAndRequireItIsSuccess", contract, 0L, args);
     }
 
     private byte[] getAbiEncodingOfRequireContractCall(boolean condition) {
-        return ABIEncoder.encodeMethodArguments("require", condition);
+        return ABIUtil.encodeMethodArguments("require", condition);
     }
 
-    private static byte[] getRawJarBytesForRequireContract() {
-        return JarBuilder.buildJarForMainAndClasses(RequireTarget.class);
+    private static byte[] getRawJarBytesForRequireContract(byte[] args) {
+        return avmRule.getDappBytes(RequireTarget.class, args);
     }
 
 }

@@ -1,9 +1,9 @@
 package org.aion.avm.tooling.poc;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.api.Address;
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Address;
+import avm.Blockchain;
 import org.aion.avm.tooling.abi.Callable;
 import org.aion.avm.userlib.AionMap;
 
@@ -16,10 +16,10 @@ public class TRS {
     private static boolean inited = false, locked = false, nullified = false;
     private static AionMap<Address, BigInteger> deposited = new AionMap<>(), withdrawn = new AionMap<>();
     private static Address owner, newOwner;
-    private static BigInteger precision = BigInteger.TEN.pow(18), totalfv, remainder, total;
+    private static BigInteger precision = BigDecimal.valueOf(StrictMath.pow(10, 18)).toBigIntegerExact(), totalfv, remainder, total;
 
     static {
-        owner = BlockchainRuntime.getCaller();
+        owner = Blockchain.getCaller();
     }
 
     @Callable
@@ -36,7 +36,7 @@ public class TRS {
     public static void start(long blockTimestamp) {
         if (inited && isPreStart() && callerIsOwner()) {
             startBlockTimestamp = blockTimestamp;
-            total = BlockchainRuntime.getBalance(BlockchainRuntime.getAddress());
+            total = Blockchain.getBalance(Blockchain.getAddress());
             totalfv = total;
             remainder = total;
         }
@@ -44,12 +44,12 @@ public class TRS {
 
     public static void refund(Address address, BigInteger amount) {
         if (callerIsOwner() && isPreLock()) {
-            BlockchainRuntime.call(address, amount, new byte[0], 21_000);
+            Blockchain.call(address, amount, new byte[0], 21_000);
         }
     }
 
     public static int period() {
-        return periodAt(BlockchainRuntime.getBlockTimestamp());
+        return periodAt(Blockchain.getBlockTimestamp());
     }
 
     public static int periodAt(long timestamp) {
@@ -66,7 +66,7 @@ public class TRS {
             BigInteger value = BigInteger.valueOf(amount);
             deposited.put(address, value);
             withdrawn.put(address, BigInteger.ZERO);
-            BlockchainRuntime.log(address.unwrap(), value.toByteArray());
+            Blockchain.log(address.unwrap(), value.toByteArray());
         }
     }
 
@@ -83,13 +83,13 @@ public class TRS {
             }
 
             totalfv = totalfv.add(amount);
-            BlockchainRuntime.log(beneficiary.unwrap(), amount.toByteArray());
+            Blockchain.log(beneficiary.unwrap(), amount.toByteArray());
         }
     }
 
     public static void deposit(BigInteger amount) {
         if (callerIsOwner() && !nullified) {
-            depositTo(BlockchainRuntime.getCaller(), amount);
+            depositTo(Blockchain.getCaller(), amount);
         }
     }
 
@@ -111,13 +111,13 @@ public class TRS {
         if (isPostStart() && !nullified) {
             BigInteger deposit = deposited.get(address);
             BigInteger withdraw = withdrawn.get(address);
-            BigInteger diff = _withdrawTo(deposit, withdraw, BlockchainRuntime.getBlockTimestamp());
+            BigInteger diff = _withdrawTo(deposit, withdraw, Blockchain.getBlockTimestamp());
             if (diff.equals(BigInteger.ZERO)) {
                 return false;
             }
 
             assert ((diff.add(withdraw)).compareTo(deposit) <= 0);
-            BlockchainRuntime.call(address, diff, new byte[0], 21_000);
+            Blockchain.call(address, diff, new byte[0], 21_000);
 
             if (withdrawn.containsKey(address)) {
                 withdrawn.put(address, withdrawn.get(address).add(diff));
@@ -126,7 +126,7 @@ public class TRS {
             }
 
             remainder = remainder.subtract(diff);
-            BlockchainRuntime.log(address.unwrap(), diff.toByteArray());
+            Blockchain.log(address.unwrap(), diff.toByteArray());
             return true;
         }
         return false;
@@ -134,7 +134,7 @@ public class TRS {
 
     @Callable
     public static boolean withdraw() {
-        return !nullified && withdrawTo(BlockchainRuntime.getCaller());
+        return !nullified && withdrawTo(Blockchain.getCaller());
     }
 
     public static void bulkWithdraw(Address[] addresses) {
@@ -159,7 +159,7 @@ public class TRS {
     }
 
     private static boolean callerIsOwner() {
-        return owner.equals(BlockchainRuntime.getCaller());
+        return owner.equals(Blockchain.getCaller());
     }
 
     private static boolean isPreStart() {
@@ -181,10 +181,10 @@ public class TRS {
     }
 
     private static void acceptOwnership() {
-        if (BlockchainRuntime.getCaller().equals(newOwner)) {
+        if (Blockchain.getCaller().equals(newOwner)) {
             owner = newOwner;
             newOwner = null;
-            BlockchainRuntime.log(owner.unwrap());
+            Blockchain.log(owner.unwrap());
         }
     }
 

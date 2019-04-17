@@ -1,6 +1,6 @@
 package org.aion.avm.core;
 
-import java.util.IdentityHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.aion.avm.internal.*;
 
 
@@ -13,6 +13,7 @@ import org.aion.avm.internal.*;
 public class MockFailureInstrumentationFactory implements IInstrumentationFactory {
     private final int basicBlockIndex;
     private final Runnable toRun;
+    private final AtomicInteger count = new AtomicInteger(0);
 
     public MockFailureInstrumentationFactory(int basicBlockIndex, Runnable toRun) {
         this.basicBlockIndex = basicBlockIndex;
@@ -23,9 +24,8 @@ public class MockFailureInstrumentationFactory implements IInstrumentationFactor
     public IInstrumentation createInstrumentation() {
         CommonInstrumentation underlying = new CommonInstrumentation();
         return new IInstrumentation() {
-            private int count;
             @Override
-            public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, IdentityHashMap<Class<?>, org.aion.avm.shadow.java.lang.Class<?>> classWrappers) {
+            public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers) {
                 underlying.enterNewFrame(contractLoader, energyLeft, nextHashCode, classWrappers);
             }
             @Override
@@ -50,8 +50,7 @@ public class MockFailureInstrumentationFactory implements IInstrumentationFactor
             }
             @Override
             public void chargeEnergy(long cost) throws OutOfEnergyException {
-                int thisIndex = this.count;
-                this.count += 1;
+                int thisIndex = MockFailureInstrumentationFactory.this.count.getAndIncrement();
                 if (thisIndex == MockFailureInstrumentationFactory.this.basicBlockIndex) {
                     MockFailureInstrumentationFactory.this.toRun.run();
                 }

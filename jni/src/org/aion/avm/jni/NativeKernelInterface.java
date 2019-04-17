@@ -132,6 +132,7 @@ public class NativeKernelInterface implements KernelInterface {
 
     @Override
     public void payMiningFee(Address address, BigInteger fee) {
+        System.out.println("avm trys to pay mining fee");
         // This method may have special logic in the kernel. Here it is just adjustBalance.
         adjustBalance(address, fee);
     }
@@ -150,7 +151,7 @@ public class NativeKernelInterface implements KernelInterface {
 
     @Override
     public void removeStorage(Address address, byte[] key) {
-        throw new AssertionError("This class does not implement this method.");
+        System.out.println("remove storage");
     }
 
     @Override
@@ -160,24 +161,66 @@ public class NativeKernelInterface implements KernelInterface {
 
     @Override
     public byte[] getObjectGraph(Address a) {
-        return new byte[0x00];
+        System.out.println("get object graph");
+        return getObjectGraph(handle, a.toBytes());
     }
 
     @Override
     public void putObjectGraph(Address a, byte[] data) {
-
+        System.out.println("put object graph");
+        setObjectGraph(handle, a.toBytes(), data);
     }
 
+    // Camus: this should not be in kernel interface
     @Override
-    public Set<byte[]> getTouchedAccounts() {
-        throw new AssertionError("This class does not implement this method.");
+    public Address getMinerAddress() {
+        throw new AssertionError("Did not expect this to be called.");
     }
+
+    // Camus: this should not be in kernel interface
+    @Override
+    public long getBlockDifficulty() {
+        throw new AssertionError("Did not expect this to be called.");
+    }
+
+    // Camus: this should not be in kernel interface
+    @Override
+    public long getBlockEnergyLimit() {
+        throw new AssertionError("Did not expect this to be called.");
+    }
+
+    // Camus: this should not be in kernel interface
+    @Override
+    public long getBlockTimestamp() {
+        throw new AssertionError("Did not expect this to be called.");
+    }
+
+    // Camus: this should not be in kernel interface
+    @Override
+    public long getBlockNumber() {
+        throw new AssertionError("Did not expect this to be called.");
+    }
+
+    // @Override
+    // public Set<byte[]> getTouchedAccounts() {
+    //     throw new AssertionError("This class does not implement this method.");
+    // }
 
     @Override
     public void commitTo(KernelInterface target) { }
 
     @Override
     public void commit() { }
+
+    @Override
+    public void setTransformedCode(Address address, byte[] code) {
+        setTransformedCode(handle, address.toBytes(), code);
+    }
+
+    @Override
+    public byte[] getTransformedCode(Address address) {
+        return getTransformedCode(handle, address.toBytes());
+    }
 
     public static native void createAccount(long handle, byte[] address);
 
@@ -202,6 +245,14 @@ public class NativeKernelInterface implements KernelInterface {
     public static native long getNonce(long handle, byte[] address);
 
     public static native void incrementNonce(long handle, byte[] address);
+
+    public static native byte[] getTransformedCode(long handle, byte[] address);
+
+    public static native void setTransformedCode(long handle, byte[] address, byte[] code);
+
+    public static native byte[] getObjectGraph(long handle, byte[] address);
+
+    public static native void setObjectGraph(long handle, byte[] address, byte[] data);
 
     /// update substates in kernel
     public static native void touchAccount(long handle, byte[] address, int idx);

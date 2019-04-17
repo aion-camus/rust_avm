@@ -1,8 +1,7 @@
 package org.aion.avm.tooling;
 
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
+import org.aion.avm.core.util.ABIUtil;
+import avm.Address;
 import org.aion.kernel.AvmTransactionResult;
 import org.aion.vm.api.interfaces.TransactionResult;
 import org.junit.Assert;
@@ -114,14 +113,14 @@ public class AssertionErrorIntegrationTest {
     }
 
     private String callStaticString(Address dapp, String methodName, Object... arguments) {
-        byte[] argData = ABIEncoder.encodeMethodArguments(methodName, arguments);
+        byte[] argData = ABIUtil.encodeMethodArguments(methodName, arguments);
         TransactionResult result = avmRule.call(avmRule.getPreminedAccount(), dapp, BigInteger.ZERO, argData, ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
         Assert.assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
         byte[] resultData = result.getReturnData();
         if(null == resultData) {
             return null;
         }
-        byte[] utf8 = (byte[])ABIDecoder.decodeOneObject(result.getReturnData());
+        byte[] utf8 = (byte[])ABIUtil.decodeOneObject(result.getReturnData());
         return (null != utf8)
                 ? new String(utf8)
                 : null;

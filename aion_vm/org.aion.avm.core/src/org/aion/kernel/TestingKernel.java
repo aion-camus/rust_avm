@@ -11,8 +11,6 @@ import org.aion.types.Address;
 import java.io.File;
 import org.aion.vm.api.interfaces.KernelInterface;
 
-import java.util.Set;
-
 
 /**
  * A modified version of CachingKernel to support more general usage so it can be used as the kernel underlying tests.
@@ -24,7 +22,15 @@ public class TestingKernel implements KernelInterface {
     public static final byte AVM_CONTRACT_PREFIX = 0x0b;
 
     public static final Address PREMINED_ADDRESS = Address.wrap(Helpers.hexStringToBytes("a025f4fd54064e869f158c1b4eb0ed34820f67e60ee80a53b469f725efc06378"));
+    public static final Address BIG_PREMINED_ADDRESS = Address.wrap(Helpers.hexStringToBytes("a035f4fd54064e869f158c1b4eb0ed34820f67e60ee80a53b469f725efc06378"));
     public static final BigInteger PREMINED_AMOUNT = BigInteger.TEN.pow(18);
+    public static final BigInteger PREMINED_BIG_AMOUNT = BigInteger.valueOf(465000000).multiply(PREMINED_AMOUNT);
+
+    private BigInteger blockDifficulty;
+    private long blockNumber;
+    private long blockTimestamp;
+    private long blockNrgLimit;
+    private Address blockCoinbase;
 
     private final IDataStore dataStore;
 
@@ -35,14 +41,38 @@ public class TestingKernel implements KernelInterface {
         this.dataStore = new MemoryBackedDataStore();
         IAccountStore premined = this.dataStore.createAccount(PREMINED_ADDRESS.toBytes());
         premined.setBalance(PREMINED_AMOUNT);
+        premined = this.dataStore.createAccount(BIG_PREMINED_ADDRESS.toBytes());
+        premined.setBalance(PREMINED_BIG_AMOUNT);
+        this.blockDifficulty = BigInteger.valueOf(10_000_000L);
+        this.blockNumber = 1;
+        this.blockTimestamp = System.currentTimeMillis();
+        this.blockNrgLimit = 10_000_000L;
+        this.blockCoinbase = Helpers.randomAddress();
+    }
+
+    /**
+     * Creates an instance of the interface which is backed by in-memory structures, only.
+     */
+    public TestingKernel(Block block) {
+        this.dataStore = new MemoryBackedDataStore();
+        IAccountStore premined = this.dataStore.createAccount(PREMINED_ADDRESS.toBytes());
+        premined.setBalance(PREMINED_AMOUNT);
+        premined = this.dataStore.createAccount(BIG_PREMINED_ADDRESS.toBytes());
+        premined.setBalance(PREMINED_BIG_AMOUNT);
+        this.blockDifficulty = block.getDifficulty();
+        this.blockNumber = block.getNumber();
+        this.blockTimestamp = block.getTimestamp();
+        this.blockNrgLimit = block.getEnergyLimit();
+        this.blockCoinbase = block.getCoinbase();
     }
 
     /**
      * Creates an instance of the interface which is backed by a directory on disk.
      * 
      * @param onDiskRoot The root directory which this implementation will use for persistence.
+     * @param block The top block of the current state of this kernel.
      */
-    public TestingKernel(File onDiskRoot) {
+    public TestingKernel(File onDiskRoot, Block block) {
         this.dataStore = new DirectoryBackedDataStore(onDiskRoot);
         // Try to open the account, creating it if doesn't exist.
         IAccountStore premined = this.dataStore.openAccount(PREMINED_ADDRESS.toBytes());
@@ -50,21 +80,11 @@ public class TestingKernel implements KernelInterface {
             premined = this.dataStore.createAccount(PREMINED_ADDRESS.toBytes());
         }
         premined.setBalance(PREMINED_AMOUNT);
-    }
-
-    @Override
-    public byte[] getObjectGraph(Address a) {
-        return new byte[0x00];
-    }
-
-    @Override
-    public void putObjectGraph(Address a, byte[] data) {
-        
-    }
-
-    @Override
-    public Set<byte[]> getTouchedAccounts() {
-        throw new AssertionError("This class does not implement this method.");
+        this.blockDifficulty = block.getDifficulty();
+        this.blockNumber = block.getNumber();
+        this.blockTimestamp = block.getTimestamp();
+        this.blockNrgLimit = block.getEnergyLimit();
+        this.blockCoinbase = block.getCoinbase();
     }
 
     @Override
@@ -89,7 +109,8 @@ public class TestingKernel implements KernelInterface {
 
     @Override
     public void removeStorage(Address address, byte[] key) {
-        throw new AssertionError("This class does not implement this method.");
+        IAccountStore account = this.dataStore.openAccount(address.toBytes());
+        lazyCreateAccount(address.toBytes()).removeData(key);
     }
 
     @Override
@@ -103,13 +124,36 @@ public class TestingKernel implements KernelInterface {
     }
 
     @Override
+    public byte[] getCode(Address address) {
+        IAccountStore account = this.dataStore.openAccount(address.toBytes());
+        return (null != account)
+            ? account.getCode()
+            : null;
+    }
+
+    @Override
     public void putCode(Address address, byte[] code) {
         lazyCreateAccount(address.toBytes()).setCode(code);
     }
 
     @Override
-    public byte[] getCode(Address address) {
-        return internalGetCode(address);
+    public byte[] getTransformedCode(Address address) {
+        return internalGetTransformedCode(address);
+    }
+
+    @Override
+    public void setTransformedCode(Address address, byte[] bytes) {
+        lazyCreateAccount(address.toBytes()).setTransformedCode(bytes);
+    }
+
+    @Override
+    public void putObjectGraph(Address address, byte[] bytes) {
+        lazyCreateAccount(address.toBytes()).setObjectGraph(bytes);
+    }
+
+    @Override
+    public byte[] getObjectGraph(Address address) {
+        return lazyCreateAccount(address.toBytes()).getObjectGraph();
     }
 
     @Override
@@ -190,8 +234,33 @@ public class TestingKernel implements KernelInterface {
     public boolean destinationAddressIsSafeForThisVM(Address address) {
         // This implementation knows about contract address prefixes (just used by tests - real kernel stores out-of-band meta-data).
         // So, it is valid to use any regular address or AVM contract address.
-        byte[] code = internalGetCode(address);
+        byte[] code = internalGetTransformedCode(address);
         return (code == null) || (address.toBytes()[0] == TestingKernel.AVM_CONTRACT_PREFIX);
+    }
+
+    @Override
+    public long getBlockNumber() {
+        return blockNumber;
+    }
+
+    @Override
+    public long getBlockTimestamp() {
+        return blockTimestamp;
+    }
+
+    @Override
+    public long getBlockEnergyLimit() {
+        return blockNrgLimit;
+    }
+
+    @Override
+    public long getBlockDifficulty() {
+        return blockDifficulty.longValue();
+    }
+
+    @Override
+    public Address getMinerAddress() {
+        return blockCoinbase;
     }
 
     @Override
@@ -212,6 +281,14 @@ public class TestingKernel implements KernelInterface {
         internalAdjustBalance(address, fee);
     }
 
+    public void updateBlock(Block block) {
+        this.blockDifficulty = block.getDifficulty();
+        this.blockNumber = block.getNumber();
+        this.blockTimestamp = block.getTimestamp();
+        this.blockNrgLimit = block.getEnergyLimit();
+        this.blockCoinbase = block.getCoinbase();
+    }
+
 
     private void internalAdjustBalance(Address address, BigInteger delta) {
         IAccountStore account = lazyCreateAccount(address.toBytes());
@@ -219,10 +296,10 @@ public class TestingKernel implements KernelInterface {
         account.setBalance(start.add(delta));
     }
 
-    private byte[] internalGetCode(Address address) {
+    private byte[] internalGetTransformedCode(Address address) {
         IAccountStore account = this.dataStore.openAccount(address.toBytes());
         return (null != account)
-                ? account.getCode()
+                ? account.getTransformedCode()
                 : null;
     }
 }

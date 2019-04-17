@@ -1,10 +1,8 @@
 package org.aion.avm.shadow.java.math;
 
 import org.aion.avm.arraywrapper.ObjectArray;
-import org.aion.avm.internal.IDeserializer;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.IObjectArray;
-import org.aion.avm.internal.IPersistenceToken;
 import org.aion.avm.shadow.java.lang.Enum;
 import org.aion.avm.shadow.java.lang.String;
 import org.aion.avm.shadow.java.lang.Class;
@@ -54,7 +52,7 @@ public class RoundingMode extends Enum<RoundingMode>{
 
     public static RoundingMode avm_valueOf(String request){
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.RoundingMode_avm_valueOf);
-        return (RoundingMode) Enum.avm_valueOf(new Class<>(RoundingMode.class), request);
+        return internalValueOf(request);
     }
 
     public static RoundingMode avm_valueOf(int idx){
@@ -71,8 +69,8 @@ public class RoundingMode extends Enum<RoundingMode>{
     }
 
     // Deserializer support.
-    public RoundingMode(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public RoundingMode(Void ignore, int readIndex) {
+        super(ignore, readIndex);
         lazyLoad();
     }
 
@@ -111,4 +109,9 @@ public class RoundingMode extends Enum<RoundingMode>{
         avm_$VALUES.set(6, avm_HALF_EVEN);
         avm_$VALUES.set(7, avm_UNNECESSARY);
     }
+
+    public static RoundingMode internalValueOf(String request){
+        return (RoundingMode) Enum.internalValueOf(new Class<>(RoundingMode.class), request);
+    }
+
 }

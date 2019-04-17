@@ -63,7 +63,6 @@ public class IntArray extends Array {
     }
 
     public IntArray(int[] underlying) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.IntArray_avm_constructor_1);
         RuntimeAssertionError.assertTrue(null != underlying);
         this.underlying = underlying;
     }
@@ -96,8 +95,8 @@ public class IntArray extends Array {
     // Persistent Memory Support
     //========================================================
 
-    public IntArray(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public IntArray(Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {

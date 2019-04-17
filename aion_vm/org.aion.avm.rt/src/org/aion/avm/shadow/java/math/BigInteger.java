@@ -2,12 +2,10 @@ package org.aion.avm.shadow.java.math;
 
 import org.aion.avm.arraywrapper.ByteArray;
 import org.aion.avm.internal.CodecIdioms;
-import org.aion.avm.internal.IDeserializer;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.IObject;
 import org.aion.avm.internal.IObjectDeserializer;
 import org.aion.avm.internal.IObjectSerializer;
-import org.aion.avm.internal.IPersistenceToken;
 import org.aion.avm.shadow.java.lang.Comparable;
 import org.aion.avm.shadow.java.lang.String;
 import org.aion.avm.shadow.java.lang.Number;
@@ -22,35 +20,29 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
 
     public BigInteger(ByteArray val, int off, int len) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BigInteger_avm_constructor);
-        v = new java.math.BigInteger(val.getUnderlying(), off, len);
+        setUnderlying(new java.math.BigInteger(val.getUnderlying(), off, len));
     }
 
     public BigInteger(ByteArray val) {
         this(val, 0, val.length());
     }
 
-    public BigInteger(int signum, ByteArray magnitude, int off, int len){
+    public BigInteger(int signum, ByteArray magnitude, int off, int len) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BigInteger_avm_constructor_2);
-        v = new java.math.BigInteger(signum, magnitude.getUnderlying(), off, len);
+        setUnderlying(new java.math.BigInteger(signum, magnitude.getUnderlying(), off, len));
     }
 
-    public BigInteger(int signum, ByteArray magnitude){
+    public BigInteger(int signum, ByteArray magnitude) {
         this(signum, magnitude, 0, magnitude.length());
     }
 
     public BigInteger(String val, int radix) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BigInteger_avm_constructor_4);
-        v = new java.math.BigInteger(val.getUnderlying(), radix);
+        setUnderlying(new java.math.BigInteger(val.getUnderlying(), radix));
     }
 
     public BigInteger(String val) {
         this(val, 10);
-    }
-
-    public BigInteger avm_nextProbablePrime(){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BigInteger_avm_nextProbablePrime);
-        lazyLoad();
-        return new BigInteger(this.v.nextProbablePrime());
     }
 
     public static BigInteger avm_valueOf(long val) {
@@ -99,12 +91,6 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
         lazyLoad();
         val.lazyLoad();
         return new BigInteger(v.remainder(val.v));
-    }
-
-    public BigInteger avm_pow(int exponent) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BigInteger_avm_pow);
-        lazyLoad();
-        return new BigInteger(v.pow(exponent));
     }
 
     public BigInteger avm_sqrt() {
@@ -362,8 +348,13 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
     private java.math.BigInteger v;
 
     public BigInteger(java.math.BigInteger u) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BigInteger_avm_constructor_6);
-        v = u;
+        setUnderlying(u);
+    }
+
+    private void setUnderlying(java.math.BigInteger u) {
+        if (isValidLength(u.toByteArray().length)) {
+            v = u;
+        }
     }
 
     public java.math.BigInteger getUnderlying() {
@@ -372,8 +363,8 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
     }
 
     // Deserializer support.
-    public BigInteger(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public BigInteger(Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
@@ -388,6 +379,14 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
         
         // We can serialize this as its actual 2s compliment byte array.
         CodecIdioms.serializeByteArray(serializer, this.v.toByteArray());
+    }
+
+    private boolean isValidLength(int length) {
+        if (length > 32) {
+            //we're limiting the size of BigInteger to 32 bytes to have better control over the billing
+            throw new ArithmeticException();
+        }
+        return true;
     }
 
     //========================================================

@@ -6,13 +6,10 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.math.BigInteger;
-import org.aion.avm.api.Address;
-import org.aion.avm.core.dappreading.JarBuilder;
-import org.aion.avm.core.util.CodeAndArguments;
+import avm.Address;
+import org.aion.avm.core.util.ABIUtil;
 import org.aion.avm.core.util.Helpers;
 import org.aion.avm.tooling.AvmRule;
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.userlib.abi.ABIEncoder;
 import org.aion.kernel.AvmTransactionResult;
 import org.aion.kernel.AvmTransactionResult.Code;
 import org.aion.vm.api.interfaces.TransactionResult;
@@ -24,19 +21,17 @@ public class IntegTest {
     @Rule
     public AvmRule avmRule = new AvmRule(true);
 
-    private static final long ENERGY_LIMIT = 2_000_000L;
+    private static final long ENERGY_LIMIT = 3_500_000L;
     private static final long ENERGY_PRICE = 1L;
 
     private Address installTestDApp(byte[] jar) {
-
-        byte[] txData = new CodeAndArguments(jar, new byte[0]).encodeToBytes();
 
         // Deploy.
         TransactionResult createResult =
                 avmRule.deploy(
                         avmRule.getPreminedAccount(),
                         BigInteger.ZERO,
-                        txData,
+                        jar,
                         ENERGY_LIMIT,
                         ENERGY_PRICE)
                         .getTransactionResult();
@@ -45,7 +40,7 @@ public class IntegTest {
     }
 
     private Object callStatic(Address dapp, String methodName, Object... arguments) {
-        byte[] argData = ABIEncoder.encodeMethodArguments(methodName, arguments);
+        byte[] argData = ABIUtil.encodeMethodArguments(methodName, arguments);
         TransactionResult result =
                 avmRule.call(
                         avmRule.getPreminedAccount(),
@@ -57,7 +52,7 @@ public class IntegTest {
                         .getTransactionResult();
         assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
         if (result.getReturnData() != null) {
-            return ABIDecoder.decodeOneObject(result.getReturnData());
+            return ABIUtil.decodeOneObject(result.getReturnData());
         } else {
             return null;
         }
@@ -81,7 +76,7 @@ public class IntegTest {
     @Test
     public void testSimpleDApp() {
 
-        byte[] jar = JarBuilder.buildJarForMainAndClasses(DAppNoMainWithFallbackTarget.class);
+        byte[] jar = avmRule.getDappBytes(DAppNoMainWithFallbackTarget.class, new byte[0]);
         Address dapp = installTestDApp(jar);
 
         boolean ret = (Boolean) callStatic(dapp, "test1", true);
@@ -98,7 +93,7 @@ public class IntegTest {
     public void testChattyCalculator() {
 
         byte[] jar =
-                JarBuilder.buildJarForMainAndClasses(ChattyCalculatorTarget.class, SilentCalculatorTarget.class);
+                avmRule.getDappBytes(ChattyCalculatorTarget.class, new byte[0], SilentCalculatorTarget.class);
         Address dapp = installTestDApp(jar);
 
         String ret = (String) callStatic(dapp, "amIGreater", 3, 4);
@@ -111,7 +106,7 @@ public class IntegTest {
     @Test
     public void testComplicatedDApp() {
 
-        byte[] jar = JarBuilder.buildJarForMainAndClasses(TestDAppTarget.class);
+        byte[] jar = avmRule.getDappBytes(TestDAppTarget.class, new byte[0]);
 
         Address dapp = installTestDApp(jar);
 
@@ -160,7 +155,7 @@ public class IntegTest {
     @Test
     public void testFallbackSuccess() {
         byte[] jar =
-            JarBuilder.buildJarForMainAndClasses(DAppNoMainWithFallbackTarget.class);
+            avmRule.getDappBytes(DAppNoMainWithFallbackTarget.class, new byte[0]);
 
         Address dapp = installTestDApp(jar);
 
@@ -178,11 +173,11 @@ public class IntegTest {
     @Test
     public void testFallbackFail() {
         byte[] jar =
-            JarBuilder.buildJarForMainAndClasses(DAppNoMainNoFallbackTarget.class);
+            avmRule.getDappBytes(DAppNoMainNoFallbackTarget.class, new byte[0]);
         Address dapp = installTestDApp(jar);
 
 
-        byte[] argData = ABIEncoder.encodeMethodArguments("noSuchMethod");
+        byte[] argData = ABIUtil.encodeMethodArguments("noSuchMethod");
         TransactionResult result =
             avmRule.call(
                 avmRule.getPreminedAccount(),

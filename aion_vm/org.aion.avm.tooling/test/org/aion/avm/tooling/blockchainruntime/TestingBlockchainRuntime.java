@@ -1,7 +1,7 @@
 package org.aion.avm.tooling.blockchainruntime;
 
-import org.aion.avm.shadowapi.org.aion.avm.api.Address;
-import org.aion.avm.shadowapi.org.aion.avm.api.Result;
+import org.aion.avm.shadowapi.avm.Address;
+import org.aion.avm.shadowapi.avm.Result;
 import org.aion.avm.tooling.AddressUtil;
 import org.aion.avm.tooling.crypto.CryptoUtil;
 import org.aion.avm.tooling.hash.HashUtils;
@@ -157,6 +157,25 @@ public class TestingBlockchainRuntime implements IBlockchainRuntime {
     }
 
     @Override
+    public void avm_putStorage(ByteArray key, ByteArray value) {
+        Objects.requireNonNull(address);
+        if (value == null) {
+            kernel.removeStorage(address, key.getUnderlying());
+        } else {
+            kernel.putStorage(address, key.getUnderlying(), value.getUnderlying());
+        }
+    }
+
+    @Override
+    public ByteArray avm_getStorage(ByteArray key) {
+        Objects.requireNonNull(key);
+        byte[] data = this.kernel.getStorage(address, key.getUnderlying());
+        return (null != data)
+            ? new ByteArray(data)
+            : null;
+    }
+
+    @Override
     public BigInteger avm_getBalance(Address address) {
         Objects.requireNonNull(address);
         return new BigInteger(kernel.getBalance(org.aion.types.Address.wrap(address.unwrap())));
@@ -170,7 +189,7 @@ public class TestingBlockchainRuntime implements IBlockchainRuntime {
     @Override
     public int avm_getCodeSize(Address address) {
         Objects.requireNonNull(address);
-        byte[] vc = kernel.getCode(org.aion.types.Address.wrap(address.unwrap()));
+        byte[] vc = kernel.getTransformedCode(org.aion.types.Address.wrap(address.unwrap()));
         return vc == null ? 0 : vc.length;
     }
 

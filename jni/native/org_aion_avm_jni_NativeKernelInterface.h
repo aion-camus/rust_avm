@@ -105,6 +105,38 @@ JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_incrementNonc
 
 /*
  * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    getTransformedCode
+ * Signature: (J[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_getTransformedCode
+  (JNIEnv *, jclass, jlong, jbyteArray);
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    setTransformedCode
+ * Signature: (J[B[B)V
+ */
+JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_setTransformedCode
+  (JNIEnv *, jclass, jlong, jbyteArray, jbyteArray);
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    getObjectGraph
+ * Signature: (J[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_getObjectGraph
+  (JNIEnv *, jclass, jlong, jbyteArray);
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    setObjectGraph
+ * Signature: (J[B[B)V
+ */
+JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_setObjectGraph
+  (JNIEnv *, jclass, jlong, jbyteArray, jbyteArray);
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
  * Method:    touchAccount
  * Signature: (J[BI)V
  */

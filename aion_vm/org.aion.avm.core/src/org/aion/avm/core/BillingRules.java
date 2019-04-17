@@ -35,7 +35,6 @@ public class BillingRules {
      * @return The total fee for such a deployment.
      */
     public static long getDeploymentFee(long numberOfClassesProvided, long sizeOfJarInBytes) {
-        System.out.println(String.format("deployment fee = %d", DEPLOYMENT_BASE_COST+(sizeOfJarInBytes * DEPLOYMENT_PER_BYTE_JAR_COST)+(numberOfClassesProvided * DEPLOYMENT_PER_CLASS_COST)));
         return 0L
         // All deployments have the base cost.
                 + DEPLOYMENT_BASE_COST
@@ -58,9 +57,6 @@ public class BillingRules {
         }
         // AKI-33: Our userlib is receiving a lot of changes while our tooling to prune on deployment is not yet ready so we
         // TEMPORARILY reduce this cost in order to improve testability.
-        //System.out.println(String.format("basic tx cost = %d", cost));
-        //return cost / 10L;
-        // TODO: temp code for gas, since java kernel has double-counting of DEPLOYMENT_BASE_COST
         return cost;
     }
 }

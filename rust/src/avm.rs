@@ -208,10 +208,10 @@ mod test {
     use types::{TransactionContext, AVM_CREATE};
 
     #[test]
-    fn test_avm_hello_world() {
+    fn avm_hello_world() {
         let avm = AVM::new();
         let transactions = prepare_transactions();
-        println!("{:?}", transactions);
+        println!("{:?}", transactions); 
         let results = avm.execute(&transactions).unwrap();
         println!("{:?}", results);
     }
@@ -227,7 +227,7 @@ mod test {
             caller: [2u8; 32].to_vec(),
             origin: [3u8; 32].to_vec(),
             nonce: 0,
-            value: Vec::new(),
+            value: [0u8; 32].to_vec(),
             data: code_and_arguments(&read_file(file_str).expect("Failed to read the helloworld.jar"),
                                      Option::None),
             energy_limit: 1_000_000,
@@ -240,7 +240,7 @@ mod test {
             block_energy_limit: 5_000_000,
             block_coinbase: [4u8; 32].to_vec(),
             block_previous_hash: [5u8; 32].to_vec(),
-            block_difficulty: Vec::new(),
+            block_difficulty: [0u8; 16].to_vec(),
             internal_call_depth: 0,
         };
 

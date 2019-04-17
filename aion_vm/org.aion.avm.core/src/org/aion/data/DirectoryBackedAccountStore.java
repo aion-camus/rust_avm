@@ -13,12 +13,14 @@ import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.core.util.Helpers;
 import org.aion.avm.internal.RuntimeAssertionError;
 
-
 public class DirectoryBackedAccountStore implements IAccountStore {
     private static final String FILE_NAME_CODE = "code";
+    private static final String FILE_NAME_TRANSFORMED_CODE = "transformed_code";
+
     private static final String FILE_NAME_BALANCE = "balance";
     private static final String FILE_NAME_NONCE = "nonce";
     private static final String FILE_PREFIX_KEY = "key_";
+    private static final String FILE_GRAPH = "graph";
 
     private final File accountDirectory;
     public DirectoryBackedAccountStore(File accountDirectory) {
@@ -33,6 +35,16 @@ public class DirectoryBackedAccountStore implements IAccountStore {
     @Override
     public void setCode(byte[] code) {
         writeFile(FILE_NAME_CODE, code);
+    }
+
+    @Override
+    public byte[] getTransformedCode() {
+        return readFile(FILE_NAME_TRANSFORMED_CODE);
+    }
+
+    @Override
+    public void setTransformedCode(byte[] code) {
+        writeFile(FILE_NAME_TRANSFORMED_CODE, code);
     }
 
     @Override
@@ -76,6 +88,11 @@ public class DirectoryBackedAccountStore implements IAccountStore {
     }
 
     @Override
+    public void removeData(byte[] key) {
+        deleteFile(fileNameForKey(key));
+    }
+
+    @Override
     public Map<ByteArrayWrapper, byte[]> getStorageEntries() {
         Map<ByteArrayWrapper, byte[]> result = new HashMap<>();
         // List the files and parse any names with FILE_PREFIX_KEY as a prefix.
@@ -99,6 +116,16 @@ public class DirectoryBackedAccountStore implements IAccountStore {
         return result;
     }
 
+    @Override
+    public void setObjectGraph(byte[] data) {
+        writeFile(FILE_GRAPH, data);
+    }
+
+    @Override
+    public byte[] getObjectGraph() {
+        return readFile(FILE_GRAPH);
+    }
+
 
     private byte[] readFile(String fileName) {
         Path oneFile = new File(this.accountDirectory, fileName).toPath();
@@ -117,6 +144,16 @@ public class DirectoryBackedAccountStore implements IAccountStore {
         Path oneFile = new File(this.accountDirectory, fileName).toPath();
         try {
             Files.write(oneFile, data);
+        } catch (IOException e) {
+            // This implementation doesn't handle exceptions.
+            throw RuntimeAssertionError.unexpected(e);
+        }
+    }
+
+    private void deleteFile(String fileName) {
+        Path oneFile = new File(this.accountDirectory, fileName).toPath();
+        try {
+            Files.deleteIfExists(oneFile);
         } catch (IOException e) {
             // This implementation doesn't handle exceptions.
             throw RuntimeAssertionError.unexpected(e);

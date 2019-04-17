@@ -1,9 +1,7 @@
 package org.aion.avm.shadow.java.lang;
 
-import org.aion.avm.internal.IDeserializer;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.IObject;
-import org.aion.avm.internal.IPersistenceToken;
 import org.aion.avm.internal.RuntimeAssertionError;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
@@ -207,7 +205,7 @@ public class Long extends Number implements Comparable<Long> {
 
     public static final int avm_SIZE = java.lang.Long.SIZE;
 
-    public static final int avm_BYTES = avm_SIZE / Byte.avm_SIZE;
+    public static final int avm_BYTES = java.lang.Long.BYTES;
 
     public static long avm_highestOneBit(long i) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Long_avm_highestOneBit);
@@ -294,8 +292,8 @@ public class Long extends Number implements Comparable<Long> {
     // Methods below are used by runtime and test code only!
     //========================================================
 
-    public Long(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public Long(java.lang.Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     private long v;

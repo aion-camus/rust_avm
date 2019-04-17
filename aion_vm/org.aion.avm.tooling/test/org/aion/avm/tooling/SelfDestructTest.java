@@ -1,12 +1,10 @@
 package org.aion.avm.tooling;
 
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
-import org.aion.avm.core.dappreading.JarBuilder;
-import org.aion.avm.tooling.AvmRule;
-import org.aion.avm.core.util.CodeAndArguments;
+import org.aion.avm.core.util.ABIUtil;
+import avm.Address;
+import org.aion.avm.core.util.Helpers;
 import org.aion.kernel.AvmTransactionResult;
+import org.aion.kernel.Block;
 import org.aion.vm.api.interfaces.TransactionResult;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -30,22 +28,46 @@ public class SelfDestructTest {
 
     @Test
     public void deleteSelfAndReturnValue() {
+        Block block = avmRule.getBlock();
+        deleteSelfAndReturnValue(block.getNumber());
+        deleteSelfAndReturnValue(block.getNumber() + 1);
+        deleteSelfAndReturnValue(block.getNumber() + 2);
+    }
+
+    private void deleteSelfAndReturnValue(long newBlockNumber) {
         Address target = deployCommonResource(new byte[0]);
         
-        byte[] argData = ABIEncoder.encodeMethodArguments("deleteAndReturn", deployer);
+        byte[] argData = ABIUtil.encodeMethodArguments("deleteAndReturn", deployer);
         Object resultObject = callDApp(target, argData);
         Assert.assertEquals(SelfDestructResource.DELETE_AND_RETURN, ((Integer)resultObject).intValue());
+
+        if (newBlockNumber != avmRule.getBlock().getNumber()) {
+            avmRule.updateBlock(new Block(new byte[32], newBlockNumber, Helpers.randomAddress(), System.currentTimeMillis(), new byte[0]));
+        }
+
         failToCall(target);
     }
 
     @Test
     public void deleteSelfThenCallAnotherAndReturnValue() {
+        Block block = avmRule.getBlock();
+        deleteSelfThenCallAnotherAndReturnValue(block.getNumber());
+        deleteSelfThenCallAnotherAndReturnValue(block.getNumber() + 1);
+        deleteSelfThenCallAnotherAndReturnValue(block.getNumber() + 2);
+    }
+
+    private void deleteSelfThenCallAnotherAndReturnValue(long newBlockNumber) {
         Address bystander = deployCommonResource(new byte[0]);
         Address target = deployCommonResource(new byte[0]);
         
-        byte[] argData = ABIEncoder.encodeMethodArguments("deleteCallAndReturn", deployer, bystander);
+        byte[] argData = ABIUtil.encodeMethodArguments("deleteCallAndReturn", deployer, bystander);
         Object resultObject = callDApp(target, argData);
         Assert.assertEquals(SelfDestructResource.JUST_RETURN, ((Integer)resultObject).intValue());
+
+        if (newBlockNumber != avmRule.getBlock().getNumber()) {
+            avmRule.updateBlock(new Block(new byte[32], newBlockNumber, Helpers.randomAddress(), System.currentTimeMillis(), new byte[0]));
+        }
+
         failToCall(target);
     }
 
@@ -64,13 +86,13 @@ public class SelfDestructTest {
         Address target = deployCommonResource(new byte[0]);
         
         // Call the callSelfForNull entry-point and it should return null to us.
-        byte[] argData = ABIEncoder.encodeMethodArguments("deleteDeployAndReturnAddress", deployer, makeDeploymentData(new byte[0], SelfDestructSmallResource.class));
+        byte[] argData = ABIUtil.encodeMethodArguments("deleteDeployAndReturnAddress", deployer, makeDeploymentData(new byte[0], SelfDestructSmallResource.class));
         Object resultObject = callDApp(target, argData);
         Address newTarget = (Address)resultObject;
         Assert.assertNotNull(newTarget);
         
         // Verify that we cannot call the original target.
-        argData = ABIEncoder.encodeMethodArguments("justReturn");
+        argData = ABIUtil.encodeMethodArguments("justReturn");
         failToCall(target);
     }
 
@@ -84,7 +106,7 @@ public class SelfDestructTest {
         long start = avmRule.kernel.getBalance(org.aion.types.Address.wrap(target.unwrap())).longValueExact();
         Assert.assertEquals(128L, start);
         
-        byte[] argData = ABIEncoder.encodeMethodArguments("deleteAndReturnBalance", deployer);
+        byte[] argData = ABIUtil.encodeMethodArguments("deleteAndReturnBalance", deployer);
         long result = ((Long)callDApp(target, argData)).longValue();
         Assert.assertEquals(0L, result);
         failToCall(target);
@@ -101,7 +123,7 @@ public class SelfDestructTest {
         long start = avmRule.kernel.getBalance(org.aion.types.Address.wrap(target.unwrap())).longValueExact();
         Assert.assertEquals(128L, start);
         
-        byte[] argData = ABIEncoder.encodeMethodArguments("deleteAndReturnBalanceFromAnother", deployer, bystander);
+        byte[] argData = ABIUtil.encodeMethodArguments("deleteAndReturnBalanceFromAnother", deployer, bystander);
         long result = ((Long)callDApp(target, argData)).longValue();
         Assert.assertEquals(0L, result);
         failToCall(target);
@@ -111,7 +133,7 @@ public class SelfDestructTest {
     public void deleteAndFailToCallSelf() {
         Address target = deployCommonResource(new byte[0]);
         
-        byte[] argData = ABIEncoder.encodeMethodArguments("deleteAndFailToCallSelf", deployer);
+        byte[] argData = ABIUtil.encodeMethodArguments("deleteAndFailToCallSelf", deployer);
         Object resultObject = callDApp(target, argData);
         Assert.assertEquals(SelfDestructResource.DELETE_AND_FAIL_TO_CALL_SELF, ((Integer)resultObject).intValue());
         failToCall(target);
@@ -122,7 +144,7 @@ public class SelfDestructTest {
         Address accomplice = deployCommonResource(new byte[0]);
         Address target = deployCommonResource(new byte[0]);
         
-        byte[] argData = ABIEncoder.encodeMethodArguments("callToDeleteSuccess", deployer, target);
+        byte[] argData = ABIUtil.encodeMethodArguments("callToDeleteSuccess", deployer, target);
         Object resultObject = callDApp(accomplice, argData);
         Assert.assertEquals(SelfDestructResource.CALL_TO_DELETE_SUCCESS, ((Integer)resultObject).intValue());
         failToCall(target);
@@ -133,12 +155,12 @@ public class SelfDestructTest {
         Address accomplice = deployCommonResource(new byte[0]);
         Address target = deployCommonResource(new byte[0]);
         
-        byte[] argData = ABIEncoder.encodeMethodArguments("callToDeleteFailure", deployer, target);
+        byte[] argData = ABIUtil.encodeMethodArguments("callToDeleteFailure", deployer, target);
         Object resultObject = callDApp(accomplice, argData);
         Assert.assertEquals(SelfDestructResource.CALL_TO_DELETE_FAIL, ((Integer)resultObject).intValue());
         
         // Verify that this is still alive.
-        argData = ABIEncoder.encodeMethodArguments("justReturn");
+        argData = ABIUtil.encodeMethodArguments("justReturn");
         resultObject = callDApp(target, argData);
         Assert.assertEquals(SelfDestructResource.JUST_RETURN, ((Integer)resultObject).intValue());
     }
@@ -153,7 +175,7 @@ public class SelfDestructTest {
         long start = avmRule.kernel.getBalance(org.aion.types.Address.wrap(target.unwrap())).longValueExact();
         Assert.assertEquals(128L, start);
         
-        byte[] argData = ABIEncoder.encodeMethodArguments("deleteAndReturnBeneficiaryBalance", beneficiary);
+        byte[] argData = ABIUtil.encodeMethodArguments("deleteAndReturnBeneficiaryBalance", beneficiary);
         Object resultObject = callDApp(target, argData);
         long fromInside = ((Long)resultObject).longValue();
         Assert.assertEquals(128L, fromInside);
@@ -176,7 +198,7 @@ public class SelfDestructTest {
     private Object callDApp(Address dAppAddress, byte[] argData) {
         TransactionResult result = avmRule.call(deployer, dAppAddress, BigInteger.ZERO, argData, ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
         Assert.assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        return ABIDecoder.decodeOneObject(result.getReturnData());
+        return ABIUtil.decodeOneObject(result.getReturnData());
     }
 
     private void failToCall(Address dAppAddress) {
@@ -188,8 +210,7 @@ public class SelfDestructTest {
     }
 
     private byte[] makeDeploymentData(byte[] deployArgs, Class classToDeploy) {
-        byte[] jar = JarBuilder.buildJarForMainAndClasses(classToDeploy);
-        return new CodeAndArguments(jar, deployArgs).encodeToBytes();
+        return avmRule.getDappBytes(classToDeploy, deployArgs);
     }
 
     private void sendMoney(Address target, BigInteger value) {

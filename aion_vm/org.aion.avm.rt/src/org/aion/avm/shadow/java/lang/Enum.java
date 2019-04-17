@@ -1,9 +1,7 @@
 package org.aion.avm.shadow.java.lang;
 
-import org.aion.avm.internal.IDeserializer;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.IObject;
-import org.aion.avm.internal.IPersistenceToken;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
 public abstract class Enum<E extends Enum<E>> extends Object {
@@ -18,8 +16,7 @@ public abstract class Enum<E extends Enum<E>> extends Object {
 
     public final String avm_name() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Enum_avm_name);
-        lazyLoad();
-        return name;
+        return getName();
     }
 
     public final int avm_ordinal() {
@@ -35,8 +32,8 @@ public abstract class Enum<E extends Enum<E>> extends Object {
     }
 
     // Deserializer support.
-    public Enum(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public Enum(java.lang.Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public String avm_toString() {
@@ -51,12 +48,6 @@ public abstract class Enum<E extends Enum<E>> extends Object {
         return this == other;
     }
 
-    public final int avm_hashCode() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Enum_avm_hashCode);
-        lazyLoad();
-        return this.ordinal;
-    }
-
     @Override
     public final Object avm_clone() throws CloneNotSupportedException {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Enum_avm_clone);
@@ -66,13 +57,22 @@ public abstract class Enum<E extends Enum<E>> extends Object {
     public static <T extends Enum<T>> T avm_valueOf(Class<T> enumType,
                                                 String name) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Enum_avm_valueOf);
+        return internalValueOf(enumType, name);
+    }
+
+    public static <T extends Enum<T>> T internalValueOf(Class<T> enumType, String name) {
         T result = enumType.enumConstantDirectory().get(name);
         if (result != null)
             return result;
         if (name == null)
             throw new NullPointerException("Name is null");
         throw new IllegalArgumentException(
-                "No enum constant " + enumType.avm_getName() + "." + name);
+                "No enum constant " + enumType.getName() + "." + name);
+    }
+
+    public String getName() {
+        lazyLoad();
+        return name;
     }
 
     @SuppressWarnings("deprecation")

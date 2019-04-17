@@ -1,9 +1,7 @@
 package org.aion.avm.tooling;
 
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
-import org.aion.avm.tooling.AvmRule;
+import org.aion.avm.core.util.ABIUtil;
+import avm.Address;
 import org.aion.kernel.AvmTransactionResult;
 import org.aion.vm.api.interfaces.TransactionResult;
 import org.junit.Assert;
@@ -146,9 +144,9 @@ public class InstanceOfIntegrationTest {
     }
 
     private boolean callStaticBoolean(String methodName) {
-        byte[] argData = ABIEncoder.encodeMethodArguments(methodName);
+        byte[] argData = ABIUtil.encodeMethodArguments(methodName);
         TransactionResult result = avmRule.call(deployer, dappAddress, BigInteger.ZERO, argData, ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
         Assert.assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        return ((Boolean) ABIDecoder.decodeOneObject(result.getReturnData())).booleanValue();
+        return ((Boolean) ABIUtil.decodeOneObject(result.getReturnData())).booleanValue();
     }
 }

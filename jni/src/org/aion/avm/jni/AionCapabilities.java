@@ -31,7 +31,8 @@ public class AionCapabilities implements IExternalCapabilities {
     public Address generateContractAddress(TransactionInterface txMessage) {
         byte[] sender = txMessage.getSenderAddress().toBytes();
         byte[] nonce = txMessage.getNonce();
-        NativeKernelInterface kernel = new NativeKernelInterface(0);
-        return new Address(kernel.contract_address(sender, nonce));
+        Address new_contract = new Address(NativeKernelInterface.contract_address(sender, nonce));
+        System.out.println(new_contract);
+        return new_contract;
     }
 }

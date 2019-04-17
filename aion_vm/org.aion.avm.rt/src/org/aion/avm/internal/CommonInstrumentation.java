@@ -1,6 +1,5 @@
 package org.aion.avm.internal;
 
-import java.lang.reflect.Field;
 import java.util.*;
 
 
@@ -12,23 +11,13 @@ public class CommonInstrumentation implements IInstrumentation {
 
     // State which applies to the entire stack.
     private boolean abortState;
-    private final Field persistenceTokenField;
 
     public CommonInstrumentation() {
         this.callerFrames = new Stack<>();
         this.abortState = false;
-
-        // We need to look up the persistenceTokenField so we can install the special token for classes.
-        try {
-            this.persistenceTokenField = org.aion.avm.shadow.java.lang.Object.class.getDeclaredField("persistenceToken");
-        } catch (NoSuchFieldException | SecurityException e) {
-            // Clearly a fatal error.
-            throw RuntimeAssertionError.unexpected(e);
-        }
-        this.persistenceTokenField.setAccessible(true);
     }
 
-    public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, IdentityHashMap<Class<?>, org.aion.avm.shadow.java.lang.Class<?>> classWrappers) {
+    public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers) {
         RuntimeAssertionError.assertTrue(null != contractLoader);
         FrameState newFrame = new FrameState();
         newFrame.lateLoader = contractLoader;
@@ -73,29 +62,6 @@ public class CommonInstrumentation implements IInstrumentation {
         org.aion.avm.shadow.java.lang.Class<T> wrapper = null;
         if (null != input) {
             wrapper = (org.aion.avm.shadow.java.lang.Class<T>) this.currentFrame.internedClassWrappers.get(input);
-            if (null == wrapper) {
-                /**
-                 * NOTE:  We need to treat Class objects as though they are allocated "outside" of the contract space.  We could use a special IInstrumentation
-                 * instance for that case but that seems a little heavy-weight for what is currently only observable as a change in the hashcode.
-                 * In the future, we may want to formalize this using a mechanism like that (potentially even the bootstrap IInstrumentation) but, to keep this
-                 * simple, we will just swap out the "nextHashCode" and restore it, after allocation.  Similarly, to avoid the Class being observed
-                 * as being in any specific allocation order, we will formally apply a hashcode based on its name as its "identity hash".
-                 */
-                int normalHashCode = this.currentFrame.nextHashCode;
-                this.currentFrame.nextHashCode = input.getName().hashCode();
-                wrapper = new org.aion.avm.shadow.java.lang.Class<T>(input);
-                // Restore the normal hashcode counter.
-                this.currentFrame.nextHashCode = normalHashCode;
-                // We treat classes much like constants, so add the IPersistenceToken for classes so that the persistence model knows how to ignore this.
-                try {
-                    persistenceTokenField.set(wrapper, new ClassPersistenceToken(input.getName()));
-                } catch (IllegalArgumentException | IllegalAccessException e) {
-                    // This is something statically wrong with the shadow JCL.
-                    RuntimeAssertionError.unexpected(e);
-                }
-                
-                this.currentFrame.internedClassWrappers.put(input, wrapper);
-            }
         }
         return wrapper;
     }
@@ -339,7 +305,7 @@ public class CommonInstrumentation implements IInstrumentation {
          * The persistence layer also knows that classes are encoded differently so it will correctly resolve instance through this interning map.
          */
         private IdentityHashMap<String, org.aion.avm.shadow.java.lang.String> internedStringWrappers;
-        private IdentityHashMap<Class<?>, org.aion.avm.shadow.java.lang.Class<?>> internedClassWrappers;
+        private InternedClasses internedClassWrappers;
 
         // Set forceExitState to non-null to re-throw at the entry to every block (forces the contract to exit).
         private AvmThrowable forceExitState;

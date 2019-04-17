@@ -1,25 +1,71 @@
 package org.aion.avm.jni;
 
-import java.math.BigInteger;
-
-import org.aion.avm.core.BillingRules;
-import org.aion.types.Address;
+import org.aion.vm.api.interfaces.TransactionSideEffects;
 import org.aion.vm.api.interfaces.TransactionInterface;
+import org.aion.avm.internal.RuntimeAssertionError;
+import org.aion.avm.core.BillingRules;
 
-/// this class includes the Message transferred between kernel and avm
-/// though avm calls it Transaction, it is not absolutely right, more like a message.
+import org.aion.types.Address;
+import org.aion.kernel.Transaction;
+import org.aion.kernel.SideEffects;
+
+import java.math.BigInteger;
+import java.util.Arrays;
+
+/**
+ * Represents a transaction context for execution.
+ */
 public class Message implements TransactionInterface {
 
-    public Message(Type type, Address from, Address to, BigInteger nonce, BigInteger value, byte[] data, long energyLimit, long energyPrice, byte[] transactionHash) {
-        this.type = type;
-        this.from = from.toBytes();
-        this.to = to.toBytes();
-        this.nonce = nonce;
-        this.value = value;
-        this.data = data;
-        this.energyLimit = energyLimit;
-        this.energyPrice = energyPrice;
-        this.transactionHash = transactionHash;
+    private final byte type;
+    private final byte[] address;
+    private final byte[] caller;
+    private final byte[] origin;
+    private final long nonce;
+    private final byte[] value;
+    private final byte[] data;
+    private final long energyLimit;
+    private final long energyPrice;
+    private byte[] transactionHash;
+    private final int basicCost;
+    private long transactionTimestamp;
+    
+    private final byte[] blockPreviousHash;
+    private final int internalCallDepth;
+    private final TransactionSideEffects sideEffects;
+
+    public final long blockTimestamp;
+    public final long blockNumber;
+    public final long blockEnergyLimit;
+    public final byte[] blockCoinbase;
+    public final byte[] blockDifficulty;
+
+    byte vm;
+
+
+    public Message(byte[] bytes) {
+        NativeDecoder dec = new NativeDecoder(bytes);
+
+        type = dec.decodeByte();
+        address = dec.decodeBytes();
+        caller = dec.decodeBytes();
+        origin = dec.decodeBytes();
+        nonce = dec.decodeLong();
+        value = dec.decodeBytes();
+        data = dec.decodeBytes();
+        energyLimit = dec.decodeLong();
+        energyPrice = dec.decodeLong();
+        transactionHash = dec.decodeBytes();
+        basicCost = dec.decodeInt();
+        transactionTimestamp = dec.decodeLong();
+        blockTimestamp = dec.decodeLong();
+        blockNumber = dec.decodeLong();
+        blockEnergyLimit = dec.decodeLong();
+        blockCoinbase = dec.decodeBytes();
+        blockPreviousHash = dec.decodeBytes();
+        blockDifficulty = dec.decodeBytes();
+        internalCallDepth = dec.decodeInt();
+        sideEffects = new SideEffects();
     }
 
     public enum Type {
@@ -46,42 +92,25 @@ public class Message implements TransactionInterface {
         public int toInt() {
             return this.value;
         }
+
+        public byte toByte() {
+            return (byte) this.value;
+        }
     }
-
-    Type type;
-    
-    byte[] from;
-
-    byte[] to;
-
-    BigInteger nonce;
-
-    BigInteger value;
-
-    long timestamp;
-
-    byte[] timestampAsBytes;
-
-    byte[] data;
-
-    long energyLimit;
-
-    long energyPrice;
-
-    byte[] transactionHash;
-
-    byte vm;
 
     @Override
     public byte[] getTimestamp() {
-        if (this.timestampAsBytes == null) {
-            this.timestampAsBytes = BigInteger.valueOf(this.timestamp).toByteArray();
-        }
-        return this.timestampAsBytes;
+        return BigInteger.valueOf(this.transactionTimestamp).toByteArray();
+    }
+
+    @Override
+    public byte getKind() {
+        System.out.printf("message: getKind = %d\n", toAvmType(type).toInt());
+        return toAvmType(type).toByte();
     }
 
     long getTimestampAsLong() {
-        return timestamp;
+        return transactionTimestamp;
     }
 
     /**
@@ -95,39 +124,44 @@ public class Message implements TransactionInterface {
         return this.vm;
     }
 
+    @Override
+    public Address getContractAddress() {
+        throw new AssertionError("Did not expect this to be called.");
+    }
+
     /**
      * Returns the type of transactional logic that this transaction will cause to be executed.
      */
     public Type getType() {
-        return type;
+        return toAvmType(type);
     }
 
     @Override
     public Address getSenderAddress() {
-        return org.aion.types.Address.wrap(from);
+        return org.aion.types.Address.wrap(caller);
     }
 
     @Override
     public Address getDestinationAddress() {
-        return org.aion.types.Address.wrap(to);
+        return org.aion.types.Address.wrap(address);
     }
 
     @Override
     public byte[] getNonce() {
-        return this.nonce.toByteArray();
+        return BigInteger.valueOf(nonce).toByteArray();
     }
 
     long getNonceAsLong() {
-        return nonce.longValue();
+        return nonce;
     }
 
     @Override
     public byte[] getValue() {
-        return this.value.toByteArray();
+        return this.value;
     }
 
     BigInteger getValueAsBigInteger() {
-        return value;
+        return new BigInteger(value);
     }
 
     @Override
@@ -156,12 +190,54 @@ public class Message implements TransactionInterface {
         return BillingRules.getBasicTransactionCost(getData());
     }
 
+    //Camus: it is strange that vm may change transaction timestamp
     public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
+        this.transactionTimestamp = timestamp;
     }
 
     @Override
     public boolean isContractCreationTransaction() {
-        return this.to == null;
+        return this.address == null;
+    }
+
+    @Override
+    public String toString() {
+        return "TransactionContextHelper{" +
+                "type=" + type +
+                ", address=" + Arrays.toString(address) +
+                ", caller=" + Arrays.toString(caller) +
+                ", origin=" + Arrays.toString(origin) +
+                ", nonce=" + nonce +
+                ", value=" + Arrays.toString(value) +
+                ", data=" + Arrays.toString(data) +
+                ", energyLimit=" + energyLimit +
+                ", energyPrice=" + energyPrice +
+                ", transactionHash=" + Arrays.toString(transactionHash) +
+                ", basicCost=" + basicCost +
+                ", transactionTimestamp=" + transactionTimestamp +
+                ", blockTimestamp=" + blockTimestamp +
+                ", blockNumber=" + blockNumber +
+                ", blockEnergyLimit=" + blockEnergyLimit +
+                ", blockCoinbase=" + Arrays.toString(blockCoinbase) +
+                ", blockPreviousHash=" + Arrays.toString(blockPreviousHash) +
+                ", blockDifficulty=" + Arrays.toString(blockDifficulty) +
+                ", internalCallDepth=" + internalCallDepth +
+                '}';
+    }
+
+    private Type toAvmType(byte type) {
+        Type avmType;
+        switch (type) {
+            case 0x03:
+                avmType = Type.CREATE;
+                break;
+            case 0x05:
+                avmType = Type.GARBAGE_COLLECT;
+                break;
+            default:
+                avmType = Type.CALL;
+        }
+
+        return avmType;
     }
 }

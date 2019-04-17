@@ -10,8 +10,9 @@ import org.aion.avm.core.util.ByteArrayWrapper;
  * The abstract interface over a single account residing in an IDataStore instance.
  */
 public interface IAccountStore {
+
     /**
-     * @return The code stored for this account.
+     * @return The deploy code stored for this account.
      */
     public byte[] getCode();
 
@@ -20,6 +21,15 @@ public interface IAccountStore {
      */
     public void setCode(byte[] code);
 
+    /**
+     * @return The transformed code stored for this account.
+     */
+    public byte[] getTransformedCode();
+
+    /**
+     * @param code The transformed code to store for this account.
+     */
+    public void setTransformedCode(byte[] code);
     /**
      * @return The account balance.
      */
@@ -57,9 +67,30 @@ public interface IAccountStore {
     public void setData(byte[] key, byte[] value);
 
     /**
+     * Removes the application key-value store.
+     *
+     * @param key The key to remove.
+     */
+    public void removeData(byte[] key);
+
+    /**
      * Used only for testing and will be removed in the future.
      * 
      * @return A map of the entries in the account's application key-value store.
      */
     public Map<ByteArrayWrapper, byte[]> getStorageEntries();
+
+    /**
+     * Writes the serialized application object graph.
+     * 
+     * @param data The raw serialized graph to write.
+     */
+    public void setObjectGraph(byte[] data);
+
+    /**
+     * Reads the serialized application object graph.
+     * 
+     * @return The raw serialized graph read.
+     */
+    public byte[] getObjectGraph();
 }

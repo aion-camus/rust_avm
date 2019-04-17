@@ -1,8 +1,7 @@
 package org.aion.avm.tooling;
 
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
+import org.aion.avm.core.util.ABIUtil;
+import avm.Address;
 import org.aion.kernel.AvmTransactionResult;
 import org.aion.vm.api.interfaces.TransactionResult;
 import org.junit.Assert;
@@ -93,9 +92,9 @@ public class AssertKeywordIntegrationTest {
     }
 
     private Object callStatic(Address dapp, String methodName, Object... arguments) {
-        byte[] argData = ABIEncoder.encodeMethodArguments(methodName, arguments);
+        byte[] argData = ABIUtil.encodeMethodArguments(methodName, arguments);
         TransactionResult result = avmRule.call(avmRule.getPreminedAccount(), dapp, BigInteger.ZERO, argData, ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
         Assert.assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        return ABIDecoder.decodeOneObject(result.getReturnData());
+        return ABIUtil.decodeOneObject(result.getReturnData());
     }
 }

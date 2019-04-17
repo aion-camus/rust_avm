@@ -2,9 +2,9 @@ package org.aion.avm.core;
 
 import java.math.BigInteger;
 
-import org.aion.avm.api.Address;
-import org.aion.avm.api.BlockchainRuntime;
-import org.aion.avm.api.Result;
+import avm.Address;
+import avm.Blockchain;
+import avm.Result;
 import org.aion.avm.userlib.AionBuffer;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
@@ -18,17 +18,17 @@ public class DeploymentArgumentTarget {
     private static byte[] smallJar;
 
     static {
-        Object[] args = ABIDecoder.decodeDeploymentArguments(BlockchainRuntime.getData());
-        arg0 = (String)args[0];
-        arg1 = (Address[])args[1];
-        arg2 = (Integer)args[2];
-        arg3 = (Double)args[3];
-        smallJar = (byte[]) args[4];
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        arg0 = decoder.decodeOneString();
+        arg1 = decoder.decodeOneAddressArray();
+        arg2 = decoder.decodeOneInteger();
+        arg3 = decoder.decodeOneDouble();
+        smallJar = decoder.decodeOneByteArray();
     }
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
@@ -45,19 +45,32 @@ public class DeploymentArgumentTarget {
     }
 
     public static void correctDeployment() {
-        byte[] deploymentArgs = ABIEncoder.encodeDeploymentArguments(arg0, arg1, arg2, arg3, smallJar);
+
+        byte[] arg0Bytes = ABIEncoder.encodeOneString(arg0);
+        byte[] arg1Bytes = ABIEncoder.encodeOneAddressArray(arg1);
+        byte[] arg2Bytes = ABIEncoder.encodeOneInteger(arg2);
+        byte[] arg3Bytes = ABIEncoder.encodeOneDouble(arg3);
+        byte[] smallJarBytes = ABIEncoder.encodeOneByteArray(smallJar);
+        byte[] deploymentArgs = concatenateArrays(arg0Bytes, arg1Bytes, arg2Bytes, arg3Bytes, smallJarBytes);
+
         byte[] codeAndArguments = encodeCodeAndArguments(deploymentArgs);
-        Result createResult = BlockchainRuntime.create(BigInteger.ZERO, codeAndArguments, BlockchainRuntime.getEnergyLimit());
-        BlockchainRuntime.require(createResult.isSuccess());
+        Result createResult = Blockchain.create(BigInteger.ZERO, codeAndArguments, Blockchain.getEnergyLimit());
+        Blockchain.require(createResult.isSuccess());
     }
 
     public static void incorrectDeployment() {
         // For this failed attempt, we will omit the final argument, which should cause a deployment failure.
-        byte[] deploymentArgs = ABIEncoder.encodeDeploymentArguments(arg0, arg1, arg2, arg3);
+
+        byte[] arg0Bytes = ABIEncoder.encodeOneString(arg0);
+        byte[] arg1Bytes = ABIEncoder.encodeOneAddressArray(arg1);
+        byte[] arg2Bytes = ABIEncoder.encodeOneInteger(arg2);
+        byte[] arg3Bytes = ABIEncoder.encodeOneDouble(arg3);
+        byte[] deploymentArgs = concatenateArrays(arg0Bytes, arg1Bytes, arg2Bytes, arg3Bytes);
+
         byte[] codeAndArguments = encodeCodeAndArguments(deploymentArgs);
-        Result createResult = BlockchainRuntime.create(BigInteger.ZERO, codeAndArguments, BlockchainRuntime.getEnergyLimit());
+        Result createResult = Blockchain.create(BigInteger.ZERO, codeAndArguments, Blockchain.getEnergyLimit());
         // We still want to pass (to ensure this isn't a different failure) so require that the sub-deployment failed.
-        BlockchainRuntime.require(!createResult.isSuccess());
+        Blockchain.require(!createResult.isSuccess());
     }
 
 
@@ -71,5 +84,19 @@ public class DeploymentArgumentTarget {
         codeAndArgumentsBuffer.putInt(deploymentArgs.length);
         codeAndArgumentsBuffer.put(deploymentArgs);
         return codeAndArguments;
+    }
+
+    private static byte[] concatenateArrays(byte[]... arrays) {
+        int length = 0;
+        for(byte[] array : arrays) {
+            length += array.length;
+        }
+        byte[] result = new byte[length];
+        int writtenSoFar = 0;
+        for(byte[] array : arrays) {
+            System.arraycopy(array, 0, result, writtenSoFar, array.length);
+            writtenSoFar += array.length;
+        }
+        return result;
     }
 }

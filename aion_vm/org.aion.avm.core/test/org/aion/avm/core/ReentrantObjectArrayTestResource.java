@@ -1,7 +1,7 @@
 package org.aion.avm.core;
 
 import java.math.BigInteger;
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 
@@ -14,13 +14,13 @@ public class ReentrantObjectArrayTestResource {
     }
 
     public static void testString() {
-        byte[] data = ABIEncoder.encodeMethodArguments("setString");
-        BlockchainRuntime.call(BlockchainRuntime.getAddress(), BigInteger.ZERO, data, BlockchainRuntime.getEnergyLimit());
+        byte[] data = ABIEncoder.encodeOneString("setString");
+        Blockchain.call(Blockchain.getAddress(), BigInteger.ZERO, data, Blockchain.getEnergyLimit());
     }
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {

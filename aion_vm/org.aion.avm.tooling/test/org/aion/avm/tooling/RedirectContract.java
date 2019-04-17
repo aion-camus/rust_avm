@@ -1,9 +1,9 @@
 package org.aion.avm.tooling;
 
 import java.math.BigInteger;
-import org.aion.avm.api.Address;
-import org.aion.avm.api.BlockchainRuntime;
-import org.aion.avm.api.Result;
+import avm.Address;
+import avm.Blockchain;
+import avm.Result;
 import org.aion.avm.tooling.abi.Callable;
 import org.aion.avm.userlib.abi.ABIDecoder;
 
@@ -26,9 +26,15 @@ public class RedirectContract {
      */
     @Callable
     public static byte[] callOtherContractAndRequireItIsSuccess(Address addressOfOther, long value, byte[] args) {
-        Result result = BlockchainRuntime.call(addressOfOther, BigInteger.valueOf(value), args, BlockchainRuntime.getRemainingEnergy());
-        BlockchainRuntime.require(result.isSuccess());
-        return (result.getReturnData() != null) ? (byte[]) ABIDecoder.decodeOneObject(result.getReturnData()) : null;
+        Result result = Blockchain.call(addressOfOther, BigInteger.valueOf(value), args, Blockchain.getRemainingEnergy());
+        Blockchain.require(result.isSuccess());
+        if (null == result.getReturnData() || 0 == result.getReturnData().length) {
+            return null;
+        } else {
+            // we should never get here since all Callables in RequireTarget are of type void
+            ABIDecoder decoder = new ABIDecoder(result.getReturnData());
+            return decoder.decodeOneByteArray();
+        }
     }
 
 }

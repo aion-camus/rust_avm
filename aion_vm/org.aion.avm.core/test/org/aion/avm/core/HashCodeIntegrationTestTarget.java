@@ -1,6 +1,6 @@
 package org.aion.avm.core;
 
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 
@@ -12,15 +12,15 @@ public class HashCodeIntegrationTestTarget {
     private static Object persistentObject;
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
             if (methodName.equals("persistNewObject")) {
-                return ABIEncoder.encodeOneObject(persistNewObject());
+                return ABIEncoder.encodeOneInteger(persistNewObject());
             } else if (methodName.equals("readPersistentHashCode")) {
-                return ABIEncoder.encodeOneObject(readPersistentHashCode());
+                return ABIEncoder.encodeOneInteger(readPersistentHashCode());
             } else {
                 return new byte[0];
             }

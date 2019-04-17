@@ -1,6 +1,6 @@
 package legacy_examples.helloworld;
 
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.tooling.abi.Callable;
 import org.aion.avm.userlib.abi.ABIDecoder;
 
@@ -12,9 +12,9 @@ public class HelloWorld {
     private static int bar;
 
     static {
-        if (BlockchainRuntime.getData() != null) {
-            Object[] arguments = ABIDecoder.decodeDeploymentArguments(BlockchainRuntime.getData());
-            bar = (int)arguments[0];
+        if (Blockchain.getData() != null) {
+            ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+            bar = decoder.decodeOneInteger();
         }
     }
 

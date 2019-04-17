@@ -4,28 +4,27 @@ import java.math.BigInteger;
 import org.aion.avm.tooling.abi.Callable;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
-import org.aion.avm.api.BlockchainRuntime;
-import org.aion.avm.api.Result;
+import avm.Address;
+import avm.Blockchain;
+import avm.Result;
 
 public class FailedInternalCallClinitAddressesContract {
-    private static final Address ORIGIN = BlockchainRuntime.getOrigin();
-    private static final Address CALLER = BlockchainRuntime.getCaller();
-    private static final Address CONTRACT = BlockchainRuntime.getAddress();
+    private static final Address ORIGIN = Blockchain.getOrigin();
+    private static final Address CALLER = Blockchain.getCaller();
+    private static final Address CONTRACT = Blockchain.getAddress();
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
-            Object[] argValues = ABIDecoder.decodeArguments(inputBytes);
             if (methodName.equals("runInternalCallsAndTrackAddressRecurseThenGrabOwnAddress")) {
-                return ABIEncoder.encodeOneObject(runInternalCallsAndTrackAddressRecurseThenGrabOwnAddress((byte[]) argValues[0], (byte[]) argValues[1], (Integer) argValues[2]));
+                return ABIEncoder.encodeOneAddressArray(runInternalCallsAndTrackAddressRecurseThenGrabOwnAddress(decoder.decodeOneByteArray(), decoder.decodeOneByteArray(), decoder.decodeOneInteger()));
             } else if (methodName.equals("runInternalCallsAndTrackAddressGrabOwnAddressThenRecurse")) {
-                return ABIEncoder.encodeOneObject(runInternalCallsAndTrackAddressGrabOwnAddressThenRecurse((byte[]) argValues[0], (byte[]) argValues[1], (Integer) argValues[2]));
+                return ABIEncoder.encodeOneAddressArray(runInternalCallsAndTrackAddressGrabOwnAddressThenRecurse(decoder.decodeOneByteArray(), decoder.decodeOneByteArray(), decoder.decodeOneInteger()));
             } else if (methodName.equals("recurseAndTrackAddresses")) {
-                return ABIEncoder.encodeOneObject(recurseAndTrackAddresses((byte[]) argValues[0], (byte[]) argValues[1], (Integer) argValues[2], (Integer) argValues[3], (Boolean) argValues[4]));
+                return ABIEncoder.encodeOneAddressArray(recurseAndTrackAddresses(decoder.decodeOneByteArray(), decoder.decodeOneByteArray(), decoder.decodeOneInteger(), decoder.decodeOneInteger(), decoder.decodeOneBoolean()));
             } else {
                 return new byte[0];
             }
@@ -115,19 +114,27 @@ public class FailedInternalCallClinitAddressesContract {
                 dappBytes[j] = dappBytesSecondHalf[i];
             }
 
-            Result createResult = BlockchainRuntime.create(BigInteger.ZERO, dappBytes, BlockchainRuntime.getRemainingEnergy());
+            Result createResult = Blockchain.create(BigInteger.ZERO, dappBytes, Blockchain.getRemainingEnergy());
 
             // This way we actually know if something went wrong...
             if (!createResult.isSuccess()) {
-                BlockchainRuntime.revert();
+                Blockchain.revert();
             }
 
             // Grab the address of the newly created dapp.
             Address newDappAddress = new Address(createResult.getReturnData());
 
             // Now call into the dapp. We assume its code is this same class, so this is 'recursive'.
-            byte[] callData = ABIEncoder.encodeMethodArguments("recurseAndTrackAddresses", dappBytesFirstHalf, dappBytesSecondHalf, numOtherContracts, currentDepth + 1, recurseFirst);
-            Result callResult = BlockchainRuntime.call(newDappAddress, BigInteger.ZERO, callData, BlockchainRuntime.getRemainingEnergy());
+
+            byte[] methodNameBytes = ABIEncoder.encodeOneString("recurseAndTrackAddresses");
+            byte[] argBytes1 = ABIEncoder.encodeOneByteArray(dappBytesFirstHalf);
+            byte[] argBytes2 = ABIEncoder.encodeOneByteArray(dappBytesSecondHalf);
+            byte[] argBytes3 = ABIEncoder.encodeOneInteger(numOtherContracts);
+            byte[] argBytes4 = ABIEncoder.encodeOneInteger(currentDepth + 1);
+            byte[] argBytes5 = ABIEncoder.encodeOneBoolean(recurseFirst);
+            byte[] callData = concatenateArrays(methodNameBytes, argBytes1, argBytes2, argBytes3, argBytes4, argBytes5);
+
+            Result callResult = Blockchain.call(newDappAddress, BigInteger.ZERO, callData, Blockchain.getRemainingEnergy());
 
             // check the revert on the deepest child.
             if (currentDepth == numOtherContracts - 1) {
@@ -137,7 +144,7 @@ public class FailedInternalCallClinitAddressesContract {
             } else {
                 // not the deepest child, so something actually went wrong...
                 if (!callResult.isSuccess()) {
-                    BlockchainRuntime.revert();
+                    Blockchain.revert();
                 }
             }
 
@@ -150,10 +157,11 @@ public class FailedInternalCallClinitAddressesContract {
                 return reportForThisContract;
             }
 
-            Address[] reportForOtherContracts = (Address[]) ABIDecoder.decodeOneObject(callResult.getReturnData());
+            ABIDecoder decoder = new ABIDecoder(callResult.getReturnData());
+            Address[] reportForOtherContracts = decoder.decodeOneAddressArray();
             return joinArrays(reportForThisContract, reportForOtherContracts);
         } else {
-            BlockchainRuntime.revert();
+            Blockchain.revert();
             return null;
         }
     }
@@ -186,6 +194,20 @@ public class FailedInternalCallClinitAddressesContract {
         }
 
         return array;
+    }
+
+    private static byte[] concatenateArrays(byte[]... arrays) {
+        int length = 0;
+        for(byte[] array : arrays) {
+            length += array.length;
+        }
+        byte[] result = new byte[length];
+        int writtenSoFar = 0;
+        for(byte[] array : arrays) {
+            System.arraycopy(array, 0, result, writtenSoFar, array.length);
+            writtenSoFar += array.length;
+        }
+        return result;
     }
 
 }

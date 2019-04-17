@@ -1,7 +1,7 @@
 package org.aion.avm.core.testWallet;
 
 import java.util.IdentityHashMap;
-import org.aion.avm.api.Address;
+import avm.Address;
 import org.aion.avm.core.ClassHierarchyForest;
 import org.aion.avm.core.ClassToolchain;
 import org.aion.avm.core.DAppCreator;
@@ -98,7 +98,7 @@ public class Deployer {
         String targetTestName = BlockchainRuntime.class.getName();
         byte[] targetTestBytes = Helpers.loadRequiredResourceAsBytes(Helpers.fulllyQualifiedNameToInternalName(targetTestName) + ".class");
 
-        String newName = "org/aion/avm/api/BlockchainRuntime";
+        String newName = "avm/Blockchain";
         byte[] renamedBytes = new ClassToolchain.Builder(targetTestBytes, PARSING_OPTIONS)
                 .addNextVisitor(new ClassRenameVisitor(newName))
                 .addWriter(new ClassWriter(WRITING_OPTIONS))
@@ -106,7 +106,7 @@ public class Deployer {
                 .runAndGetBytecode();
         try {
             SingleLoader loader = new SingleLoader("", new byte[0]);
-            Class<?> blockchainRuntime = loader.loadClassFromByteCode("org.aion.avm.api.BlockchainRuntime", renamedBytes);
+            Class<?> blockchainRuntime = loader.loadClassFromByteCode("avm.Blockchain", renamedBytes);
             Class<?> directProxy = loader.loadClassFromByteCode(DirectProxy.class.getName(), Helpers.loadRequiredResourceAsBytes(Helpers.fulllyQualifiedNameToInternalName(DirectProxy.class.getName()) + ".class"));
             Class<?> walletShim = loader.loadClassFromByteCode(WalletShim.class.getName(), Helpers.loadRequiredResourceAsBytes(Helpers.fulllyQualifiedNameToInternalName(WalletShim.class.getName()) + ".class"));
             Class<?> multiOwned = loader.loadClassFromByteCode(Multiowned.class.getName(), Helpers.loadRequiredResourceAsBytes(Helpers.fulllyQualifiedNameToInternalName(Multiowned.class.getName()) + ".class"));
@@ -233,7 +233,7 @@ public class Deployer {
         CommonInstrumentation instrumentation = new CommonInstrumentation();
         InstrumentationHelpers.attachThread(instrumentation);
         IRuntimeSetup runtimeSetup = Helpers.getSetupForLoader(loader);
-        InstrumentationHelpers.pushNewStackFrame(runtimeSetup, loader, 10_000_000L, 1, new IdentityHashMap<java.lang.Class<?>, org.aion.avm.shadow.java.lang.Class<?>>());
+        InstrumentationHelpers.pushNewStackFrame(runtimeSetup, loader, 10_000_000L, 1, new InternedClasses());
         // Note that this single externalRuntime instance doesn't really make sense - it is only useful in the cases where we aren't using
         // it for invocation context, just environment (energy counter, event logging, etc).
         TestingBlockchainRuntime externalRuntime = new TestingBlockchainRuntime(CAPABILITIES).withEventCounter(eventCounts);

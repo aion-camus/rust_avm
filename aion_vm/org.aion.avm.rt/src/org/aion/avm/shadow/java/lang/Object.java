@@ -1,14 +1,13 @@
 package org.aion.avm.shadow.java.lang;
 
 import org.aion.avm.ClassNameExtractor;
-import org.aion.avm.internal.IDeserializer;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.IObject;
 import org.aion.avm.internal.IObjectDeserializer;
 import org.aion.avm.internal.IObjectSerializer;
-import org.aion.avm.internal.IPersistenceToken;
 import org.aion.avm.internal.RuntimeAssertionError;
 import org.aion.avm.RuntimeMethodFeeSchedule;
+
 
 /**
  * The shadow implementation of the {@link java.lang.Object}.
@@ -18,25 +17,29 @@ public class Object extends java.lang.Object implements IObject {
         // Shadow classes MUST be loaded during bootstrap phase.
         IInstrumentation.attachedThreadInstrumentation.get().bootstrapOnly();
     }
+    public static final int NEW_INSTANCE_READ_INDEX = -1;
 
     private int hashCode;
 
-    public IPersistenceToken persistenceToken;
-
-    // We hold on to this deserializer until we need to load the instance (this is cleared after lazyLoad() completes).
-    private IDeserializer deserializer;
+    // The readIndex is only used in cases of reentrant calls (this is the serialization index of the instance in the caller frame when serialized for the reentrant call).
+    public final int readIndex;
 
     public Object() {
         this.hashCode = IInstrumentation.attachedThreadInstrumentation.get().getNextHashCodeAndIncrement();
-        this.persistenceToken = null;
+        this.readIndex = NEW_INSTANCE_READ_INDEX;
     }
 
-    // Special constructor only invoked when instantiating this as an instance stub.
-    public Object(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        this.persistenceToken = persistenceToken;
-        this.deserializer = deserializer;
+    // Special constructor only invoked when instantiating through the persistence system (the use of true Void here is just to make sure the user can't define it).
+    public Object(java.lang.Void ignore, int readIndex) {
+        this.readIndex = readIndex;
     }
 
+    // We created this special allocator for cases where we don't want to change the hashcode (Classes, for example).
+    protected Object(java.lang.Void ignore, java.lang.Void ignore2, int hashCode) {
+        this.hashCode = hashCode;
+        this.readIndex = NEW_INSTANCE_READ_INDEX;
+    }
+ 
     public void updateHashCodeForConstant(int hashCode) {
         // Note that this can only be called for constants and their hash codes are initialized by a special IInstrumentation, under NodeEnvironment, which gives them
         // this MIN_VALUE hash code so we can detect this case.
@@ -62,8 +65,7 @@ public class Object extends java.lang.Object implements IObject {
     @Override
     public int avm_hashCode() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Object_avm_hashCode);
-        lazyLoad();
-        return this.hashCode;
+        return internalHashcode();
     }
 
     @Override
@@ -104,13 +106,8 @@ public class Object extends java.lang.Object implements IObject {
      * Note that this is final since the protected "deserializeSelf" should be over-ridden.
      */
     public final void lazyLoad() {
-        if (null != this.deserializer) {
-            // Clear the deserializer instance variable before we perform the deserialization (since it might want to install a new one).
-            IDeserializer existingDeserializer = this.deserializer;
-            this.deserializer = null;
-            // Tell the deserializer to invoke the deserialization pipeline (which may call back to us).
-            existingDeserializer.startDeserializeInstance(this, this.persistenceToken);
-        }
+        // This now does nothing - will be removed later if we are certain we don't want the lazy loading.
+        // It was originally how the lazy loading system worked when we had the incremental loading design.
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
@@ -120,7 +117,7 @@ public class Object extends java.lang.Object implements IObject {
         // NOTE:  It would probably be a better design to special-case the handling of the hashCode, in the automatic implementation,
         // since this otherwise means that we have a "real" implementation which we pretend is not "real" so we can automatically
         // deserialize our sub-class.  This should improve performance, though.
-        deserializer.beginDeserializingAutomatically(this, firstRealImplementation);
+        deserializer.automaticallyDeserializeFromRoot((null == firstRealImplementation) ? Object.class : firstRealImplementation, this);
     }
 
     public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
@@ -130,6 +127,11 @@ public class Object extends java.lang.Object implements IObject {
         // NOTE:  It would probably be a better design to special-case the handling of the hashCode, in the automatic implementation,
         // since this otherwise means that we have a "real" implementation which we pretend is not "real" so we can automatically
         // serialize our sub-class.  This should improve performance, though.
-        serializer.beginSerializingAutomatically(this, firstRealImplementation);
+        serializer.automaticallySerializeToRoot((null == firstRealImplementation) ? Object.class : firstRealImplementation, this);
+    }
+
+    public int internalHashcode(){
+        lazyLoad();
+        return this.hashCode;
     }
 }

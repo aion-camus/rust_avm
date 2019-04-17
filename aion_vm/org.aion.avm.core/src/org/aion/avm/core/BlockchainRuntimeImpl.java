@@ -1,7 +1,7 @@
 package org.aion.avm.core;
 
-import org.aion.avm.shadowapi.org.aion.avm.api.Address;
-import org.aion.avm.shadowapi.org.aion.avm.api.Result;
+import org.aion.avm.shadowapi.avm.Address;
+import org.aion.avm.shadowapi.avm.Result;
 import org.aion.avm.internal.*;
 import org.aion.avm.arraywrapper.ByteArray;
 import org.aion.avm.core.types.InternalTransaction;
@@ -12,7 +12,7 @@ import org.aion.parallel.TransactionTask;
 
 import java.util.List;
 import org.aion.vm.api.interfaces.KernelInterface;
-import org.aion.vm.api.interfaces.TransactionContext;
+import org.aion.vm.api.interfaces.TransactionInterface;
 
 
 /**
@@ -24,17 +24,17 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private final AvmInternal avm;
     private final ReentrantDAppStack.ReentrantState reentrantState;
 
-    private TransactionContext ctx;
+    private TransactionInterface tx;
     private final byte[] dAppData;
     private TransactionTask task;
     private final IRuntimeSetup thisDAppSetup;
 
-    public BlockchainRuntimeImpl(IExternalCapabilities capabilities, KernelInterface kernel, AvmInternal avm, ReentrantDAppStack.ReentrantState reentrantState, TransactionTask task, TransactionContext ctx, byte[] dAppData, IRuntimeSetup thisDAppSetup) {
+    public BlockchainRuntimeImpl(IExternalCapabilities capabilities, KernelInterface kernel, AvmInternal avm, ReentrantDAppStack.ReentrantState reentrantState, TransactionTask task, TransactionInterface tx, byte[] dAppData, IRuntimeSetup thisDAppSetup) {
         this.capabilities = capabilities;
         this.kernel = kernel;
         this.avm = avm;
         this.reentrantState = reentrantState;
-        this.ctx = ctx;
+        this.tx = tx;
         this.dAppData = dAppData;
         this.task = task;
         this.thisDAppSetup = thisDAppSetup;
@@ -42,33 +42,34 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public Address avm_getAddress() {
-        org.aion.types.Address address = (ctx.getTransactionKind() == Type.CREATE.toInt()) ? this.capabilities.generateContractAddress(this.ctx.getTransaction()) : ctx.getDestinationAddress();
+        org.aion.types.Address address = (tx.getKind() == Type.CREATE.toInt()) ? this.capabilities.generateContractAddress(this.tx) : tx.getDestinationAddress();
         return new Address(address.toBytes());
     }
 
     @Override
     public Address avm_getCaller() {
-        return new Address(ctx.getSenderAddress().toBytes());
+        return new Address(tx.getSenderAddress().toBytes());
     }
 
     @Override
     public Address avm_getOrigin() {
-        return new Address(ctx.getOriginAddress().toBytes());
+        return new Address(task.getOriginAddress().unwrap());
     }
 
     @Override
     public long avm_getEnergyLimit() {
-        return ctx.getTransaction().getEnergyLimit();
+        return tx.getEnergyLimit();
     }
 
     @Override
     public long avm_getEnergyPrice() {
-        return ctx.getTransactionEnergyPrice();
+        return tx.getEnergyPrice();
     }
 
     @Override
     public org.aion.avm.shadow.java.math.BigInteger avm_getValue() {
-        return new org.aion.avm.shadow.java.math.BigInteger(ctx.getTransferValue());
+        java.math.BigInteger value = new java.math.BigInteger(tx.getValue());
+        return new org.aion.avm.shadow.java.math.BigInteger(value);
     }
 
     @Override
@@ -81,27 +82,52 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public long avm_getBlockTimestamp() {
-        return ctx.getBlockTimestamp();
+        return kernel.getBlockTimestamp();
     }
 
     @Override
     public long avm_getBlockNumber() {
-        return ctx.getBlockNumber();
+        return kernel.getBlockNumber();
     }
 
     @Override
     public long avm_getBlockEnergyLimit() {
-        return ctx.getBlockEnergyLimit();
+        return kernel.getBlockEnergyLimit();
     }
 
     @Override
     public Address avm_getBlockCoinbase() {
-        return new Address(ctx.getMinerAddress().toBytes());
+        return new Address(kernel.getMinerAddress().toBytes());
     }
 
     @Override
     public org.aion.avm.shadow.java.math.BigInteger avm_getBlockDifficulty() {
-        return org.aion.avm.shadow.java.math.BigInteger.avm_valueOf(ctx.getBlockDifficulty());
+        return org.aion.avm.shadow.java.math.BigInteger.avm_valueOf(kernel.getBlockDifficulty());
+    }
+
+    @Override
+    public void avm_putStorage(ByteArray key, ByteArray value) {
+        require(key != null, "Key can't be NULL");
+        require(key.getUnderlying().length == 32, "Key must be 32 bytes");
+
+        org.aion.types.Address contractAddress = getContractAddress();
+        if (value == null) {
+            kernel.removeStorage(contractAddress, key.getUnderlying());
+        } else {
+            kernel.putStorage(contractAddress, key.getUnderlying(), value.getUnderlying());
+        }
+    }
+
+    @Override
+    public ByteArray avm_getStorage(ByteArray key) {
+        require(key != null, "Key can't be NULL");
+        require(key.getUnderlying().length == 32, "Key must be 32 bytes");
+
+        org.aion.types.Address contractAddress = getContractAddress();
+        byte[] data = this.kernel.getStorage(contractAddress, key.getUnderlying());
+        return (null != data)
+            ? new ByteArray(data)
+            : null;
     }
 
     @Override
@@ -116,9 +142,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public org.aion.avm.shadow.java.math.BigInteger avm_getBalanceOfThisContract() {
         // This method can be called inside clinit so CREATE is a valid context.
-        org.aion.types.Address contractAddress = (ctx.getTransaction().isContractCreationTransaction())
-            ? this.capabilities.generateContractAddress(this.ctx.getTransaction())
-            : ctx.getDestinationAddress();
+        org.aion.types.Address contractAddress = getContractAddress();
 
         // Acquire resource before reading
         avm.getResourceMonitor().acquire(contractAddress.toBytes(), this.task);
@@ -142,7 +166,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public Result avm_call(Address targetAddress, org.aion.avm.shadow.java.math.BigInteger value, ByteArray data, long energyLimit) {
-        org.aion.types.Address internalSender = (ctx.getTransactionKind() == Type.CREATE.toInt()) ? this.capabilities.generateContractAddress(this.ctx.getTransaction()) : ctx.getDestinationAddress();
+        org.aion.types.Address internalSender = (tx.getKind() == Type.CREATE.toInt()) ? this.capabilities.generateContractAddress(this.tx) : tx.getDestinationAddress();
 
         java.math.BigInteger underlyingValue = value.getUnderlying();
         require(targetAddress != null, "Destination can't be NULL");
@@ -151,7 +175,9 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         require(data != null, "Data can't be NULL");
         require(energyLimit >= 0, "Energy limit can't be negative");
 
-        if (ctx.getTransactionStackDepth() == 10) {
+        if (task.getTransactionStackDepth() == 9) {
+            // since we increase depth in the upcoming call to runInternalCall(),
+            // a current depth of 9 means we're about to go up to 10, so we fail
             throw new CallDepthLimitExceededException("Internal call depth cannot be more than 10");
         }
 
@@ -161,14 +187,14 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         }
 
         // construct the internal transaction
-        InternalTransaction internalTx = new InternalTransaction(Transaction.Type.CALL,
+        InternalTransaction internalTx = new InternalTransaction(Type.CALL,
                 internalSender,
                 target,
                 this.kernel.getNonce(internalSender),
                 underlyingValue,
                 data.getUnderlying(),
                 restrictEnergyLimit(energyLimit),
-                ctx.getTransactionEnergyPrice());
+                tx.getEnergyPrice());
         
         // Call the common run helper.
         return runInternalCall(internalTx);
@@ -176,7 +202,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public Result avm_create(org.aion.avm.shadow.java.math.BigInteger value, ByteArray data, long energyLimit) {
-        org.aion.types.Address internalSender = (ctx.getTransactionKind() == Type.CREATE.toInt()) ? this.capabilities.generateContractAddress(this.ctx.getTransaction()) : ctx.getDestinationAddress();
+        org.aion.types.Address internalSender = (tx.getKind() == Type.CREATE.toInt()) ? this.capabilities.generateContractAddress(this.tx) : tx.getDestinationAddress();
 
         java.math.BigInteger underlyingValue = value.getUnderlying();
         require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");
@@ -184,19 +210,21 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         require(data != null, "Data can't be NULL");
         require(energyLimit >= 0, "Energy limit can't be negative");
 
-        if (ctx.getTransactionStackDepth() == 10) {
+        if (task.getTransactionStackDepth() == 9) {
+            // since we increase depth in the upcoming call to runInternalCall(),
+            // a current depth of 9 means we're about to go up to 10, so we fail
             throw new CallDepthLimitExceededException("Internal call depth cannot be more than 10");
         }
 
         // construct the internal transaction
-        InternalTransaction internalTx = new InternalTransaction(Transaction.Type.CREATE,
+        InternalTransaction internalTx = new InternalTransaction(Type.CREATE,
                 internalSender,
                 null,
                 this.kernel.getNonce(internalSender),
                 underlyingValue,
                 data.getUnderlying(),
                 restrictEnergyLimit(energyLimit),
-                ctx.getTransactionEnergyPrice());
+                tx.getEnergyPrice());
         
         // Call the common run helper.
         return runInternalCall(internalTx);
@@ -212,9 +240,9 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     public void avm_selfDestruct(Address beneficiary) {
         require(null != beneficiary, "Beneficiary can't be NULL");
 
-        org.aion.types.Address contractAddr = (ctx.getTransactionKind() == Type.CREATE.toInt())
-            ? this.capabilities.generateContractAddress(this.ctx.getTransaction())
-            : ctx.getDestinationAddress();
+        org.aion.types.Address contractAddr = (tx.getKind() == Type.CREATE.toInt())
+            ? this.capabilities.generateContractAddress(this.tx)
+            : tx.getDestinationAddress();
 
         // Acquire beneficiary address, the address of current contract is already locked at this stage.
         this.avm.getResourceMonitor().acquire(beneficiary.unwrap(), this.task);
@@ -235,11 +263,11 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     public void avm_log(ByteArray data) {
         require(null != data, "data can't be NULL");
 
-        Log log = new Log(this.capabilities, ctx.getDestinationAddress().toBytes(),
+        Log log = new Log(this.capabilities, tx.getDestinationAddress().toBytes(),
                 List.of(),
                 data.getUnderlying()
         );
-        ctx.getSideEffects().addLog(log);
+        task.getSideEffects().addLog(log);
     }
 
     @Override
@@ -247,11 +275,11 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         require(null != topic1, "topic1 can't be NULL");
         require(null != data, "data can't be NULL");
 
-        Log log = new Log(this.capabilities, ctx.getDestinationAddress().toBytes(),
+        Log log = new Log(this.capabilities, tx.getDestinationAddress().toBytes(),
                 List.of(LogSizeUtils.truncatePadTopic(topic1.getUnderlying())),
                 data.getUnderlying()
         );
-        ctx.getSideEffects().addLog(log);
+        task.getSideEffects().addLog(log);
     }
 
     @Override
@@ -260,11 +288,11 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         require(null != topic2, "topic2 can't be NULL");
         require(null != data, "data can't be NULL");
 
-        Log log = new Log(this.capabilities, ctx.getDestinationAddress().toBytes(),
+        Log log = new Log(this.capabilities, tx.getDestinationAddress().toBytes(),
                 List.of(LogSizeUtils.truncatePadTopic(topic1.getUnderlying()), LogSizeUtils.truncatePadTopic(topic2.getUnderlying())),
                 data.getUnderlying()
         );
-        ctx.getSideEffects().addLog(log);
+        task.getSideEffects().addLog(log);
     }
 
     @Override
@@ -274,11 +302,11 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         require(null != topic3, "topic3 can't be NULL");
         require(null != data, "data can't be NULL");
 
-        Log log = new Log(this.capabilities, ctx.getDestinationAddress().toBytes(),
+        Log log = new Log(this.capabilities, tx.getDestinationAddress().toBytes(),
                 List.of(LogSizeUtils.truncatePadTopic(topic1.getUnderlying()), LogSizeUtils.truncatePadTopic(topic2.getUnderlying()), LogSizeUtils.truncatePadTopic(topic3.getUnderlying())),
                 data.getUnderlying()
         );
-        ctx.getSideEffects().addLog(log);
+        task.getSideEffects().addLog(log);
     }
 
     @Override
@@ -289,11 +317,11 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         require(null != topic4, "topic4 can't be NULL");
         require(null != data, "data can't be NULL");
 
-        Log log = new Log(this.capabilities, ctx.getDestinationAddress().toBytes(),
+        Log log = new Log(this.capabilities, tx.getDestinationAddress().toBytes(),
                 List.of(LogSizeUtils.truncatePadTopic(topic1.getUnderlying()), LogSizeUtils.truncatePadTopic(topic2.getUnderlying()), LogSizeUtils.truncatePadTopic(topic3.getUnderlying()), LogSizeUtils.truncatePadTopic(topic4.getUnderlying())),
                 data.getUnderlying()
         );
-        ctx.getSideEffects().addLog(log);
+        task.getSideEffects().addLog(log);
     }
 
     @Override
@@ -361,32 +389,30 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     private Result runInternalCall(InternalTransaction internalTx) {
         // add the internal transaction to result
-        ctx.getSideEffects().addInternalTransaction(internalTx);
+        task.getSideEffects().addInternalTransaction(internalTx);
+
+        // we should never leave this method without decrementing this
+        task.incrementTransactionStackDepth();
 
         IInstrumentation currentThreadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
         if (null != this.reentrantState) {
             // Note that we want to save out the current nextHashCode.
             int nextHashCode = currentThreadInstrumentation.peekNextHashCode();
-            this.reentrantState.updateEnvironment(nextHashCode);
+            this.reentrantState.updateNextHashCode(nextHashCode);
         }
         // Temporarily detach from the DApp we were in.
         InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
 
-        TransactionContext internalCTX = TransactionContextImpl.forInternalTransaction(this.ctx, internalTx);
-
         // Acquire the target of the internal transaction
-        org.aion.types.Address target = (internalCTX.getTransactionKind() == Type.CREATE.toInt())
-            ? this.capabilities.generateContractAddress(internalCTX.getTransaction())
-            : internalCTX.getDestinationAddress();
+        org.aion.types.Address target = (internalTx.getKind() == Type.CREATE.toInt())
+            ? this.capabilities.generateContractAddress(internalTx)
+            : internalTx.getDestinationAddress();
         avm.getResourceMonitor().acquire(target.toBytes(), task);
 
         // execute the internal transaction
         AvmTransactionResult newResult = null;
         try {
-            newResult = this.avm.runInternalTransaction(this.kernel, this.task, internalCTX);
-            
-            // merge the results
-            this.ctx.getSideEffects().merge(internalCTX.getSideEffects());
+            newResult = this.avm.runInternalTransaction(this.kernel, this.task, internalTx);
         } finally {
             // Re-attach.
             InstrumentationHelpers.returnToExecutingFrame(this.thisDAppSetup);
@@ -394,13 +420,24 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         
         if (null != this.reentrantState) {
             // Update the next hashcode counter, in case this was a reentrant call and it was changed.
-            currentThreadInstrumentation.forceNextHashCode(this.reentrantState.getEnvironment().nextHashCode);
+            currentThreadInstrumentation.forceNextHashCode(this.reentrantState.getNextHashCode());
         }
 
         // charge energy consumed
         currentThreadInstrumentation.chargeEnergy(newResult.getEnergyUsed());
 
+        task.decrementTransactionStackDepth();
+
         return new Result(newResult.getResultCode().isSuccess(),
                 newResult.getReturnData() == null ? null : new ByteArray(newResult.getReturnData()));
+    }
+
+    private org.aion.types.Address getContractAddress() {
+        org.aion.types.Address contractAddress =
+            (tx.isContractCreationTransaction())
+                ? this.capabilities.generateContractAddress(this.tx)
+                : tx.getDestinationAddress();
+
+        return contractAddress;
     }
 }

@@ -362,3 +362,81 @@ JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_addLog
   struct avm_bytes n = load_bytes(env, avmLog);
   callbacks.add_log((void *)handle, &n, index);
 }
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    getTransformedCode
+ * Signature: (J[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_getTransformedCode
+  (JNIEnv *env, jclass clazz, jlong handle, jbyteArray address)
+{
+    struct avm_address a = load_address(env, address);
+
+    // ask the client for account code
+    struct avm_bytes c = callbacks.get_transformed_code((void *)handle, &a);
+
+    // convert into JVM byte array.
+    jbyteArray ret = is_null(&c) ? NULL : to_jbyteArray(env, c.pointer, c.length);
+
+    // release the buffer
+    release_bytes(&c);
+
+    return ret;
+}
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    setTransformedCode
+ * Signature: (J[B[B)V
+ */
+JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_setTransformedCode
+  (JNIEnv *env, jclass clazz, jlong handle, jbyteArray address, jbyteArray code)
+{
+    struct avm_address a = load_address(env, address);
+    struct avm_bytes c = load_bytes(env, code);
+
+    callbacks.put_transformed_code((void *)handle, &a, &c);
+
+    // release the buffer
+    release_bytes(&c);
+}
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    getObjectGraph
+ * Signature: (J[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_getObjectGraph
+  (JNIEnv *env, jclass clazz, jlong handle, jbyteArray address)
+{
+    struct avm_address a = load_address(env, address);
+    // ask the client for account code
+    struct avm_bytes c = callbacks.get_objectgraph((void *)handle, &a);
+
+    // convert into JVM byte array.
+    jbyteArray ret = is_null(&c) ? NULL : to_jbyteArray(env, c.pointer, c.length);
+
+    // release the buffer
+    release_bytes(&c);
+
+    return ret;
+}
+
+/*
+ * Class:     org_aion_avm_jni_NativeKernelInterface
+ * Method:    setObjectGraph
+ * Signature: (J[B[B)V
+ */
+JNIEXPORT void JNICALL Java_org_aion_avm_jni_NativeKernelInterface_setObjectGraph
+  (JNIEnv *env, jclass clazz, jlong handle, jbyteArray address, jbyteArray data)
+{
+    struct avm_address a = load_address(env, address);
+    struct avm_bytes c = load_bytes(env, data);
+
+    printf("JNI: setOjectGraph, func ptr = %p\n", callbacks.set_objectgraph);
+    callbacks.set_objectgraph((void *)handle, &a, &c);
+
+    // release the buffer
+    release_bytes(&c);
+}

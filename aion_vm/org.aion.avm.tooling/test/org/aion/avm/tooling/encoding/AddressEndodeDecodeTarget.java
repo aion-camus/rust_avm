@@ -1,7 +1,7 @@
 package org.aion.avm.tooling.encoding;
 
-import org.aion.avm.api.Address;
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Address;
+import avm.Blockchain;
 import org.aion.avm.tooling.abi.Callable;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
@@ -12,17 +12,19 @@ public class AddressEndodeDecodeTarget {
 
     @Callable
     public static boolean addressEncodeDecode() {
-        byte[] encoded = ABIEncoder.encodeOneObject(BlockchainRuntime.getAddress());
-        Address result = (Address) ABIDecoder.decodeOneObject(encoded);
-        return result.equals(BlockchainRuntime.getAddress());
+        byte[] encoded = ABIEncoder.encodeOneAddress(Blockchain.getAddress());
+        ABIDecoder decoder = new ABIDecoder(encoded);
+        Address result = decoder.decodeOneAddress();
+        return result.equals(Blockchain.getAddress());
     }
 
     @Callable
     public static boolean createAddress() {
         Address tempAddress = new Address(bytesOfLength(Address.LENGTH));
-        byte[] encoded = ABIEncoder.encodeOneObject(tempAddress);
-        Address result = (Address) ABIDecoder.decodeOneObject(encoded);
-        return result.equals(BlockchainRuntime.getAddress());
+        byte[] encoded = ABIEncoder.encodeOneAddress(tempAddress);
+        ABIDecoder decoder = new ABIDecoder(encoded);
+        Address result = decoder.decodeOneAddress();
+        return result.equals(Blockchain.getAddress());
     }
 
     @Callable
@@ -55,8 +57,9 @@ public class AddressEndodeDecodeTarget {
 
     @Callable
     public static Address[] addressArrayEncodeDecode(Address[] addresses) {
-        byte[] encoded = ABIEncoder.encodeOneObject(addresses);
-        Address[] result = (Address[]) ABIDecoder.decodeOneObject(encoded);
+        byte[] encoded = ABIEncoder.encodeOneAddressArray(addresses);
+        ABIDecoder decoder = new ABIDecoder(encoded);
+        Address[] result = decoder.decodeOneAddressArray();
         return result;
     }
 

@@ -1,11 +1,9 @@
 package org.aion.avm.shadow.java.math;
 
-import org.aion.avm.internal.IDeserializer;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.IObject;
 import org.aion.avm.internal.IObjectDeserializer;
 import org.aion.avm.internal.IObjectSerializer;
-import org.aion.avm.internal.IPersistenceToken;
 import org.aion.avm.shadow.java.lang.Object;
 import org.aion.avm.shadow.java.lang.String;
 
@@ -54,7 +52,7 @@ public final class MathContext extends Object {
     public RoundingMode avm_getRoundingMode() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.MathContext_avm_getRoundingMode);
         lazyLoad();
-        return RoundingMode.avm_valueOf(new String(this.v.getRoundingMode().name()));
+        return RoundingMode.internalValueOf(new String(this.v.getRoundingMode().name()));
     }
 
     public boolean avm_equals(IObject x){
@@ -72,8 +70,8 @@ public final class MathContext extends Object {
     public int avm_hashCode() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.MathContext_avm_hashCode);
         lazyLoad();
-        RoundingMode roundingMode = RoundingMode.avm_valueOf(new String(this.v.getRoundingMode().name()));
-        return this.v.getPrecision() + roundingMode.hashCode() * 59;
+        RoundingMode roundingMode = RoundingMode.internalValueOf(new String(this.v.getRoundingMode().name()));
+        return this.v.getPrecision() + roundingMode.internalHashcode() * 59;
     }
 
     public String avm_toString() {
@@ -93,8 +91,8 @@ public final class MathContext extends Object {
     }
 
     // Deserializer support.
-    public MathContext(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public MathContext(Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
@@ -102,17 +100,20 @@ public final class MathContext extends Object {
         
         // We store this as the precision (int) and the RoundingMode (stub).
         int precision = deserializer.readInt();
-        RoundingMode mode = (RoundingMode)deserializer.readStub();
-        this.v = new java.math.MathContext(precision, java.math.RoundingMode.valueOf(mode.avm_name().getUnderlying()));
+        RoundingMode mode = (RoundingMode)deserializer.readObject();
+        // Note that this will be null in our pre-pass, so check that.
+        if (null != mode) {
+            this.v = new java.math.MathContext(precision, java.math.RoundingMode.valueOf(mode.getName().getUnderlying()));
+        }
     }
 
     public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
-        super.serializeSelf(String.class, serializer);
+        super.serializeSelf(MathContext.class, serializer);
         
         // We store this as the precision (int) and the RoundingMode (stub).
         serializer.writeInt(this.v.getPrecision());
-        RoundingMode roundingMode = RoundingMode.avm_valueOf(new String(this.v.getRoundingMode().name()));
-        serializer.writeStub(roundingMode);
+        RoundingMode roundingMode = RoundingMode.internalValueOf(new String(this.v.getRoundingMode().name()));
+        serializer.writeObject(roundingMode);
     }
 
     //========================================================

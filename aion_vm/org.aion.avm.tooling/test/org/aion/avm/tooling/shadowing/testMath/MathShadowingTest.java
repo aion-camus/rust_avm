@@ -1,8 +1,9 @@
 package org.aion.avm.tooling.shadowing.testMath;
 
-import org.aion.avm.api.Address;
+import avm.Address;
+import org.aion.avm.core.util.ABIUtil;
 import org.aion.avm.tooling.AvmRule;
-import org.aion.avm.userlib.abi.ABIEncoder;
+import org.aion.vm.api.interfaces.TransactionResult;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -30,7 +31,7 @@ public class MathShadowingTest {
 
     @Test
     public void testMaxMin() {
-        byte[] txData = ABIEncoder.encodeMethodArguments("testMaxMin");
+        byte[] txData = ABIUtil.encodeMethodArguments("testMaxMin");
         Object result = avmRule.call(from, dappAddr, BigInteger.ZERO, txData, energyLimit, energyPrice).getDecodedReturnData();
 
         Assert.assertEquals(true, result);
@@ -41,9 +42,17 @@ public class MathShadowingTest {
      */
     @Test
     public void createSimpleContext() {
-        byte[] txData = ABIEncoder.encodeMethodArguments("testMathContext");
+        byte[] txData = ABIUtil.encodeMethodArguments("testMathContext");
         Object result = avmRule.call(from, dappAddr, BigInteger.ZERO, txData, energyLimit, energyPrice).getDecodedReturnData();
 
         Assert.assertEquals(5, result);
+    }
+
+    @Test
+    public void getRoundingMode() {
+        byte[] txData = ABIUtil.encodeMethodArguments("getRoundingMode");
+        TransactionResult result = avmRule.call(from, dappAddr, BigInteger.ZERO, txData, energyLimit, energyPrice).getTransactionResult();
+
+        Assert.assertTrue(result.getResultCode().isSuccess());
     }
 }

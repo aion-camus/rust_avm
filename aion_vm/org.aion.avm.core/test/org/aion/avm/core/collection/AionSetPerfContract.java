@@ -1,13 +1,13 @@
 package org.aion.avm.core.collection;
 
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.userlib.AionPlainSet;
 import org.aion.avm.userlib.AionSet;
 import org.aion.avm.userlib.abi.ABIDecoder;
 
 public class AionSetPerfContract {
 
-    public static int SIZE = 5000;
+    public static int SIZE = 500;
 
     public static AionSet<Integer> target;
 
@@ -19,8 +19,8 @@ public class AionSetPerfContract {
     }
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {

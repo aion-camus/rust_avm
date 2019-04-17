@@ -1,9 +1,10 @@
 package org.aion.avm.tooling;
 
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.api.Address;
-import org.aion.avm.core.InstrumentationBasedStorageFees;
-import org.aion.avm.userlib.abi.ABIEncoder;
+import org.aion.avm.core.dappreading.JarBuilder;
+import org.aion.avm.core.util.CodeAndArguments;
+import org.aion.avm.core.util.ABIUtil;
+import org.aion.avm.tooling.deploy.JarOptimizer;
+import avm.Address;
 import org.aion.kernel.AvmTransactionResult;
 import org.aion.vm.api.interfaces.TransactionResult;
 import org.junit.Assert;
@@ -14,22 +15,24 @@ import java.math.BigInteger;
 
 
 public class ShadowSerializationTest {
+    private boolean preserveDebugInfo = false;
+
     @Rule
-    public AvmRule avmRule = new AvmRule(false);
+    public AvmRule avmRule = new AvmRule(preserveDebugInfo);
 
     private static final long DEPLOY_ENERGY_LIMIT = 10_000_000L;
     private static final long ENERGY_PRICE = 1L;
 
     // Note that these numbers change pretty frequently, based on constants in the test, etc.
-    private static final int HASH_JAVA_LANG = 94291514;
-    private static final int HASH_JAVA_MATH = -602588053;
+    private static final int HASH_JAVA_LANG = -1260057337;
+    private static final int HASH_JAVA_MATH = -602587633;
     private static final int HASH_API = 496;
 
     Address deployer = avmRule.getPreminedAccount();
 
     @Test
     public void testPersistJavaLang() {
-        byte[] txData = avmRule.getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
+        byte[] txData = getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
         
         // deploy
         TransactionResult result1 = avmRule.deploy(deployer, BigInteger.ZERO, txData, DEPLOY_ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
@@ -48,7 +51,7 @@ public class ShadowSerializationTest {
 
     @Test
     public void testReentrantJavaLang() {
-        byte[] txData = avmRule.getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
+        byte[] txData = getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
 
         // deploy
         TransactionResult result1 = avmRule.deploy(deployer, BigInteger.ZERO, txData, DEPLOY_ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
@@ -69,7 +72,7 @@ public class ShadowSerializationTest {
 
     @Test
     public void testPersistJavaMath() {
-        byte[] txData = avmRule.getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
+        byte[] txData = getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
 
         // deploy
         TransactionResult result1 = avmRule.deploy(deployer, BigInteger.ZERO, txData, DEPLOY_ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
@@ -88,7 +91,7 @@ public class ShadowSerializationTest {
 
     @Test
     public void testReentrantJavaMath() {
-        byte[] txData = avmRule.getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
+        byte[] txData = getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
 
         // deploy
         TransactionResult result1 = avmRule.deploy(deployer, BigInteger.ZERO, txData, DEPLOY_ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
@@ -109,7 +112,7 @@ public class ShadowSerializationTest {
 
     @Test
     public void testPersistApi() {
-        byte[] txData = avmRule.getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
+        byte[] txData = getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
 
         // deploy
         TransactionResult result1 = avmRule.deploy(deployer, BigInteger.ZERO, txData, DEPLOY_ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
@@ -128,7 +131,7 @@ public class ShadowSerializationTest {
 
     @Test
     public void testReentrantApi() {
-        byte[] txData = avmRule.getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
+        byte[] txData = getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
 
         // deploy
         TransactionResult result1 = avmRule.deploy(deployer, BigInteger.ZERO, txData, DEPLOY_ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
@@ -149,7 +152,7 @@ public class ShadowSerializationTest {
 
     @Test
     public void testEnergyLoadingJavaLang() {
-        byte[] txData = avmRule.getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
+        byte[] txData = getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
         
         // deploy
         TransactionResult result1 = avmRule.deploy(deployer, BigInteger.ZERO, txData, DEPLOY_ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
@@ -166,14 +169,14 @@ public class ShadowSerializationTest {
         while (0 == hash) {
             hash = getHashSuccessWithLimit(contractAddr, "JavaLang", energyLimit);
             // Allow at most one more read to succeed on the next attempt.
-            energyLimit += InstrumentationBasedStorageFees.FIXED_READ_COST;
+            energyLimit += 1_000;
         }
         Assert.assertEquals(firstHash, hash);
     }
 
     @Test
     public void testEnergyLoadingJavaMath() {
-        byte[] txData = avmRule.getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
+        byte[] txData = getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
         
         // deploy
         TransactionResult result1 = avmRule.deploy(deployer, BigInteger.ZERO, txData, DEPLOY_ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
@@ -190,14 +193,14 @@ public class ShadowSerializationTest {
         while (0 == hash) {
             hash = getHashSuccessWithLimit(contractAddr, "JavaMath", energyLimit);
             // Allow at most one more read to succeed on the next attempt.
-            energyLimit += InstrumentationBasedStorageFees.FIXED_READ_COST;
+            energyLimit += 1_000;
         }
         Assert.assertEquals(firstHash, hash);
     }
 
     @Test
     public void testEnergyLoadingApi() {
-        byte[] txData = avmRule.getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
+        byte[] txData = getDappBytesWithUserlib(ShadowCoverageTarget.class, new byte[0]);
         
         // deploy
         TransactionResult result1 = avmRule.deploy(deployer, BigInteger.ZERO, txData, DEPLOY_ENERGY_LIMIT, ENERGY_PRICE).getTransactionResult();
@@ -214,7 +217,7 @@ public class ShadowSerializationTest {
         while (0 == hash) {
             hash = getHashSuccessWithLimit(contractAddr, "Api", energyLimit);
             // Allow at most one more read to succeed on the next attempt.
-            energyLimit += InstrumentationBasedStorageFees.FIXED_READ_COST;
+            energyLimit += 1_000;
         }
         Assert.assertEquals(firstHash, hash);
     }
@@ -222,33 +225,40 @@ public class ShadowSerializationTest {
 
     private int populate(Address contractAddr, String segmentName) {
         long energyLimit = 1_000_000L;
-        byte[] argData = ABIEncoder.encodeMethodArguments("populate_" + segmentName);
+        byte[] argData = ABIUtil.encodeMethodArguments("populate_" + segmentName);
         TransactionResult result  = avmRule.call(deployer, contractAddr, BigInteger.ZERO,  argData, energyLimit, ENERGY_PRICE).getTransactionResult();
         Assert.assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        return ((Integer) ABIDecoder.decodeOneObject(result.getReturnData())).intValue();
+        return ((Integer) ABIUtil.decodeOneObject(result.getReturnData())).intValue();
     }
 
     private int getHash(Address contractAddr, String segmentName) {
         long energyLimit = 1_000_000L;
-        byte[] argData = ABIEncoder.encodeMethodArguments("getHash_" + segmentName);
+        byte[] argData = ABIUtil.encodeMethodArguments("getHash_" + segmentName);
         TransactionResult result  = avmRule.call(deployer, contractAddr, BigInteger.ZERO,  argData, energyLimit, ENERGY_PRICE).getTransactionResult();
         Assert.assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        return ((Integer)ABIDecoder.decodeOneObject(result.getReturnData())).intValue();
+        return ((Integer)ABIUtil.decodeOneObject(result.getReturnData())).intValue();
     }
 
     private int getHashSuccessWithLimit(Address contractAddr, String segmentName, long energyLimit) {
-        byte[] argData = ABIEncoder.encodeMethodArguments("getHash_" + segmentName);
+        byte[] argData = ABIUtil.encodeMethodArguments("getHash_" + segmentName);
         TransactionResult result  = avmRule.call(deployer, contractAddr, BigInteger.ZERO,  argData, energyLimit, ENERGY_PRICE).getTransactionResult();
         return (AvmTransactionResult.Code.SUCCESS == result.getResultCode())
-                ? ((Integer)ABIDecoder.decodeOneObject(result.getReturnData())).intValue()
+                ? ((Integer)ABIUtil.decodeOneObject(result.getReturnData())).intValue()
                 : 0;
     }
 
     private void verifyReentrantChange(Address contractAddr, String segmentName) {
         long energyLimit = 2_000_000L;
-        byte[] argData = ABIEncoder.encodeMethodArguments("verifyReentrantChange_" + segmentName);
+        byte[] argData = ABIUtil.encodeMethodArguments("verifyReentrantChange_" + segmentName);
         TransactionResult result  = avmRule.call(deployer, contractAddr, BigInteger.ZERO,  argData, energyLimit, ENERGY_PRICE).getTransactionResult();
         Assert.assertEquals(AvmTransactionResult.Code.SUCCESS, result.getResultCode());
-        Assert.assertTrue((Boolean)ABIDecoder.decodeOneObject(result.getReturnData()));
+        Assert.assertTrue((Boolean)ABIUtil.decodeOneObject(result.getReturnData()));
+    }
+
+    private byte[] getDappBytesWithUserlib(Class<?> mainClass, byte[] arguments, Class<?>... otherClasses) {
+        JarOptimizer jarOptimizer = new JarOptimizer(preserveDebugInfo);
+        byte[] jar = JarBuilder.buildJarForMainAndClassesAndUserlib(mainClass, otherClasses);
+        byte[] optimizedDappBytes = jarOptimizer.optimize(jar);
+        return new CodeAndArguments(optimizedDappBytes, arguments).encodeToBytes();
     }
 }

@@ -1,7 +1,7 @@
 package org.aion.avm.core;
 
 import java.math.BigInteger;
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 
@@ -10,10 +10,14 @@ public class AvmFailureTestResource {
 
     public static void reentrantCall(int n) {
         if (n > 0) {
-            byte[] data = ABIEncoder.encodeMethodArguments("reentrantCall", n - 1);
-            BlockchainRuntime.call(BlockchainRuntime.getAddress(), BigInteger.ZERO, data, BlockchainRuntime.getEnergyLimit());
-            BlockchainRuntime.log(new byte[]{(byte)n});
-            BlockchainRuntime.revert();
+            byte[] methodNameBytes = ABIEncoder.encodeOneString("reentrantCall");
+            byte[] argBytes = ABIEncoder.encodeOneInteger(n - 1);
+            byte[] data = new byte[methodNameBytes.length + argBytes.length];
+            System.arraycopy(methodNameBytes, 0, data, 0, methodNameBytes.length);
+            System.arraycopy(argBytes, 0, data, methodNameBytes.length, argBytes.length);
+            Blockchain.call(Blockchain.getAddress(), BigInteger.ZERO, data, Blockchain.getEnergyLimit());
+            Blockchain.log(new byte[]{(byte)n});
+            Blockchain.revert();
         }
     }
 
@@ -35,11 +39,11 @@ public class AvmFailureTestResource {
     }
 
     public static void testRevert() {
-        BlockchainRuntime.revert();
+        Blockchain.revert();
     }
 
     public static void testInvalid() {
-        BlockchainRuntime.invalid();
+        Blockchain.invalid();
     }
 
     public static void testUncaughtException() {
@@ -47,14 +51,13 @@ public class AvmFailureTestResource {
         bytes[3] = 1;
     }
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain  .getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
-            Object[] argValues = ABIDecoder.decodeArguments(inputBytes);
             if (methodName.equals("reentrantCall")) {
-                reentrantCall((Integer)argValues[0]);
+                reentrantCall(decoder.decodeOneInteger());
                 return new byte[0];
             } else if (methodName.equals("testOutOfEnergy")) {
                 testOutOfEnergy();

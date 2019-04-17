@@ -1,6 +1,6 @@
 package org.aion.avm.tooling;
 
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIDecoder;
 
 public class CryptoUtilMethodFeeBenchmarkTestTargetClass {
@@ -14,25 +14,25 @@ public class CryptoUtilMethodFeeBenchmarkTestTargetClass {
 
     public static void callBlake2b(int count, byte[] message){
         for (int i = 0; i < count; i++){
-             BlockchainRuntime.blake2b(message);
+             Blockchain.blake2b(message);
         }
     }
 
     public static void callSha(int count, byte[] message){
         for (int i = 0; i < count; i++){
-            BlockchainRuntime.sha256(message);
+            Blockchain.sha256(message);
         }
     }
 
     public static void callKeccak(int count, byte[] message){
         for (int i = 0; i < count; i++){
-            BlockchainRuntime.keccak256(message);
+            Blockchain.keccak256(message);
         }
     }
 
     public static void callEdverify(int count, byte[] message) throws IllegalArgumentException{
         for (int i = 0; i < count; i++){
-            BlockchainRuntime.edVerify(message, SIGNATURE, PK);
+            Blockchain.edVerify(message, SIGNATURE, PK);
         }
     }
 
@@ -40,23 +40,22 @@ public class CryptoUtilMethodFeeBenchmarkTestTargetClass {
      * Entry point at a transaction call.
      */
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
-            Object[] argValues = ABIDecoder.decodeArguments(inputBytes);
             if (methodName.equals("callBlake2b")) {
-                callBlake2b((Integer) argValues[0], (byte[]) argValues[1]);
+                callBlake2b(decoder.decodeOneInteger(), decoder.decodeOneByteArray());
                 return new byte[0];
             } else if (methodName.equals("callSha")) {
-                callSha((Integer) argValues[0], (byte[]) argValues[1]);
+                callSha(decoder.decodeOneInteger(), decoder.decodeOneByteArray());
                 return new byte[0];
             } else if (methodName.equals("callKeccak")) {
-                callKeccak((Integer) argValues[0], (byte[]) argValues[1]);
+                callKeccak(decoder.decodeOneInteger(), decoder.decodeOneByteArray());
                 return new byte[0];
             } else if (methodName.equals("callEdverify")) {
-                callEdverify((Integer) argValues[0], (byte[]) argValues[1]);
+                callEdverify(decoder.decodeOneInteger(), decoder.decodeOneByteArray());
                 return new byte[0];
             } else {
                 return new byte[0];

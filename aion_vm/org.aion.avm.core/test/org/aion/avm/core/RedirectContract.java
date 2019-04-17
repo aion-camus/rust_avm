@@ -1,9 +1,9 @@
 package org.aion.avm.core;
 
 import java.math.BigInteger;
-import org.aion.avm.api.Address;
-import org.aion.avm.api.BlockchainRuntime;
-import org.aion.avm.api.Result;
+import avm.Address;
+import avm.Blockchain;
+import avm.Result;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 
@@ -18,14 +18,13 @@ import org.aion.avm.userlib.abi.ABIEncoder;
 public class RedirectContract {
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
-            Object[] argValues = ABIDecoder.decodeArguments(inputBytes);
             if (methodName.equals("callOtherContractAndRequireItIsSuccess")) {
-                return ABIEncoder.encodeOneObject(callOtherContractAndRequireItIsSuccess((Address)argValues[0], (Long)argValues[1], (byte[])argValues[2]));
+                return ABIEncoder.encodeOneByteArray(callOtherContractAndRequireItIsSuccess(decoder.decodeOneAddress(), decoder.decodeOneLong(), decoder.decodeOneByteArray()));
             } {
                 return new byte[0];
             }
@@ -40,9 +39,14 @@ public class RedirectContract {
      * Otherwise this method will succeed and will return the data outputted by the contract call.
      */
     public static byte[] callOtherContractAndRequireItIsSuccess(Address addressOfOther, long value, byte[] args) {
-        Result result = BlockchainRuntime.call(addressOfOther, BigInteger.valueOf(value), args, BlockchainRuntime.getRemainingEnergy());
-        BlockchainRuntime.require(result.isSuccess());
-        return (result.getReturnData() != null) ? (byte[]) ABIDecoder.decodeOneObject(result.getReturnData()) : null;
+        Result result = Blockchain.call(addressOfOther, BigInteger.valueOf(value), args, Blockchain.getRemainingEnergy());
+        Blockchain.require(result.isSuccess());
+        if (null == result.getReturnData() || 0 == result.getReturnData().length) {
+            return null;
+        } else {
+            ABIDecoder decoder = new ABIDecoder(result.getReturnData());
+            return decoder.decodeOneByteArray();
+        }
     }
 
 }

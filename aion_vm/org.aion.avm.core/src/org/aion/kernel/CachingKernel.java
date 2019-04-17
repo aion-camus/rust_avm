@@ -9,7 +9,6 @@ import org.aion.types.Address;
 
 import org.aion.vm.api.interfaces.KernelInterface;
 
-import java.util.Set;
 
 /**
  * In in-memory cached used by the TransactionalKernel in order to store results of in-flight transactions prior to commit.
@@ -22,21 +21,6 @@ public class CachingKernel implements KernelInterface {
      */
     public CachingKernel() {
         this.dataStore = new MemoryBackedDataStore();
-    }
-
-    @Override
-    public byte[] getObjectGraph(Address a) {
-        return new byte[0x00];
-    }
-
-    @Override
-    public void putObjectGraph(Address a, byte[] data) {
-        
-    }
-
-    @Override
-    public Set<byte[]> getTouchedAccounts() {
-        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
     }
 
     @Override
@@ -62,7 +46,7 @@ public class CachingKernel implements KernelInterface {
 
     @Override
     public void removeStorage(Address address, byte[] key) {
-        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
+        lazyCreateAccount(address.toBytes()).removeData(key);
     }
 
     @Override
@@ -76,6 +60,14 @@ public class CachingKernel implements KernelInterface {
     }
 
     @Override
+    public byte[] getCode(Address address) {
+        IAccountStore account = this.dataStore.openAccount(address.toBytes());
+        return (null != account)
+            ? account.getCode()
+            : null;
+    }
+
+    @Override
     public void putCode(Address address, byte[] code) {
         // Note that saving empty code is invalid since a valid JAR is not empty.
         RuntimeAssertionError.assertTrue((null != code) && (code.length > 0));
@@ -83,11 +75,27 @@ public class CachingKernel implements KernelInterface {
     }
 
     @Override
-    public byte[] getCode(Address address) {
+    public byte[] getTransformedCode(Address address) {
         IAccountStore account = this.dataStore.openAccount(address.toBytes());
         return (null != account)
-                ? account.getCode()
-                : null;
+            ? account.getTransformedCode()
+            : null;
+    }
+
+    @Override
+    public void setTransformedCode(Address address, byte[] code) {
+        RuntimeAssertionError.assertTrue((null != code) && (code.length > 0));
+        lazyCreateAccount(address.toBytes()).setTransformedCode(code);
+    }
+
+    @Override
+    public void putObjectGraph(Address address, byte[] bytes) {
+        lazyCreateAccount(address.toBytes()).setObjectGraph(bytes);
+    }
+
+    @Override
+    public byte[] getObjectGraph(Address address) {
+        return lazyCreateAccount(address.toBytes()).getObjectGraph();
     }
 
     @Override
@@ -161,6 +169,31 @@ public class CachingKernel implements KernelInterface {
         // This implementation knows nothing of other VMs so it could only ever return true.
         // Since that is somewhat misleading (it assumes it is making a decision based on something), it is more reliable to just never call it.
         throw RuntimeAssertionError.unreachable("Caching kernel knows nothing of other VMs.");
+    }
+
+    @Override
+    public long getBlockNumber() {
+        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
+    }
+
+    @Override
+    public long getBlockTimestamp() {
+        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
+    }
+
+    @Override
+    public long getBlockEnergyLimit() {
+        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
+    }
+
+    @Override
+    public long getBlockDifficulty() {
+        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
+    }
+
+    @Override
+    public Address getMinerAddress() {
+        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
     }
 
     @Override

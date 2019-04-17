@@ -1,9 +1,7 @@
 package org.aion.avm.tooling;
 
-import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
-import org.aion.avm.core.dappreading.JarBuilder;
-import org.aion.avm.core.util.CodeAndArguments;
+import org.aion.avm.core.util.ABIUtil;
+import avm.Address;
 import org.aion.avm.core.util.Helpers;
 import org.aion.kernel.AvmTransactionResult;
 import org.aion.kernel.AvmTransactionResult.Code;
@@ -93,8 +91,7 @@ public class BadDestinationTest {
     }
 
     private static void deployContract() {
-        byte[] jar = JarBuilder.buildJarForMainAndClasses(BadDestinationTarget.class);
-        jar = new CodeAndArguments(jar, new byte[0]).encodeToBytes();
+        byte[] jar = avmRule.getDappBytes(BadDestinationTarget.class, new byte[0]);
 
         TransactionResult result = avmRule.deploy(from, BigInteger.ZERO, jar, energyLimit, energyPrice).getTransactionResult();
         assertTrue(result.getResultCode().isSuccess());
@@ -112,7 +109,7 @@ public class BadDestinationTest {
     }
 
     private byte[] encodeCallData(String methodName, Address address) {
-        return ABIEncoder.encodeMethodArguments(methodName, address);
+        return ABIUtil.encodeMethodArguments(methodName, address);
     }
 
     private Address generateDestinationAddressWithSpecifiedFirstByte(byte firstByte) {
@@ -122,7 +119,7 @@ public class BadDestinationTest {
     }
 
     private void addCodeToAddress(Address address) {
-        avmRule.kernel.putCode(org.aion.types.Address.wrap(address.unwrap()), new byte[1]);
+        avmRule.kernel.setTransformedCode(org.aion.types.Address.wrap(address.unwrap()), new byte[1]);
     }
 
 }

@@ -1,8 +1,7 @@
 package org.aion.avm.tooling.blockchainruntime;
 
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
+import org.aion.avm.core.util.ABIUtil;
+import avm.Address;
 import org.aion.avm.core.dappreading.JarBuilder;
 import org.aion.avm.tooling.AvmRule;
 import org.aion.avm.core.util.CodeAndArguments;
@@ -157,14 +156,14 @@ public class FailedInternalCallClinitAddressesTest {
 
         byte[] callData;
         if (recurseFirst) {
-            callData = ABIEncoder.encodeMethodArguments("runInternalCallsAndTrackAddressRecurseThenGrabOwnAddress", dappBytesFirstHalf, dappBytesSecondHalf, numInternalCalls);
+            callData = ABIUtil.encodeMethodArguments("runInternalCallsAndTrackAddressRecurseThenGrabOwnAddress", dappBytesFirstHalf, dappBytesSecondHalf, numInternalCalls);
         } else {
-            callData = ABIEncoder.encodeMethodArguments("runInternalCallsAndTrackAddressGrabOwnAddressThenRecurse", dappBytesFirstHalf, dappBytesSecondHalf, numInternalCalls);
+            callData = ABIUtil.encodeMethodArguments("runInternalCallsAndTrackAddressGrabOwnAddressThenRecurse", dappBytesFirstHalf, dappBytesSecondHalf, numInternalCalls);
         }
 
         TransactionResult result = avmRule.call(from, contract, BigInteger.ZERO, callData, energyLimit, energyPrice).getTransactionResult();
         assertTrue(result.getResultCode().isSuccess());
-        return (Address[]) ABIDecoder.decodeOneObject(result.getReturnData());
+        return (Address[]) ABIUtil.decodeOneObject(result.getReturnData());
     }
 
     private static byte[] getDappBytes() {

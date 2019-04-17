@@ -1,7 +1,7 @@
 package org.aion.avm.internal;
 
-import org.aion.avm.shadowapi.org.aion.avm.api.Address;
-import org.aion.avm.shadowapi.org.aion.avm.api.Result;
+import org.aion.avm.shadowapi.avm.Address;
+import org.aion.avm.shadowapi.avm.Result;
 import org.aion.avm.arraywrapper.ByteArray;
 import org.aion.avm.shadow.java.math.BigInteger;
 import org.aion.avm.shadow.java.lang.String;
@@ -93,6 +93,22 @@ public interface IBlockchainRuntime {
     //================
     // State
     //================
+
+    /**
+     * Puts the key-value data of an account.
+     *
+     * @param key key of the key-value data pair
+     * @param value value of the key-value data pair
+     */
+     void avm_putStorage(ByteArray key, ByteArray value) throws IllegalArgumentException;
+
+    /**
+     * Returns the storage value.
+     *
+     * @param key of the key-value pair
+     * @return the value in storage associated to the given key
+     */
+    ByteArray avm_getStorage(ByteArray key) throws IllegalArgumentException;
 
     /**
      * Returns the balance of an account.

@@ -1,11 +1,8 @@
 package org.aion.avm.tooling;
 
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.userlib.abi.ABIEncoder;
+import org.aion.avm.core.util.ABIUtil;
 import org.aion.types.Address;
-import org.aion.avm.core.dappreading.JarBuilder;
 import org.aion.avm.tooling.poc.TRS;
-import org.aion.avm.core.util.CodeAndArguments;
 import org.aion.avm.core.util.Helpers;
 import org.aion.avm.userlib.AionMap;
 import org.aion.kernel.*;
@@ -24,7 +21,7 @@ public class TrsTest {
     public static AvmRule avmRule = new AvmRule(true);
 
     private static Address DEPLOYER;
-    private static org.aion.avm.api.Address DEPLOYER_API;
+    private static avm.Address DEPLOYER_API;
     private static final long ENERGY_LIMIT = 100_000_000_000L;
     private static final long ENERGY_PRICE = 1;
     private static final int NUM_PERIODS = 12;
@@ -91,7 +88,7 @@ public class TrsTest {
             assertTrue(result.getResultCode().isSuccess());
 
             // Check the return value is true, indicating a non-zero withdrawal amount.
-            assertTrue((boolean) ABIDecoder.decodeOneObject(result.getReturnData()));
+            assertTrue((boolean) ABIUtil.decodeOneObject(result.getReturnData()));
 
             // Update the account balance by deducting the transaction cost from the previous balance.
             long callCost = ((AvmTransactionResult) result).getEnergyUsed() * ENERGY_PRICE;
@@ -111,11 +108,13 @@ public class TrsTest {
      * new block whose timestamp has been moved ahead in time so that it is now in the next period.
      */
     private void moveIntoNextPeriod() {
-        long previousBlockTime = avmRule.block.getTimestamp();
+        Block oldBlock = avmRule.getBlock();
+        long previousBlockTime = oldBlock.getTimestamp();
         long secondsPerPeriod = TRS.intervalSecs;
         long blocktimeForNextPeriod = previousBlockTime + secondsPerPeriod;
 
-        avmRule.block = new Block(avmRule.block.getPrevHash(), avmRule.block.getNumber(), avmRule.block.getCoinbase(), blocktimeForNextPeriod, avmRule.block.getData());
+        Block newBlock = new Block(oldBlock.getPrevHash(), oldBlock.getNumber(), oldBlock.getCoinbase(), blocktimeForNextPeriod, oldBlock.getData());
+        avmRule.updateBlock(newBlock);
     }
 
     private TransactionResult sendFundsToTrs(BigInteger amount) {
@@ -123,13 +122,13 @@ public class TrsTest {
     }
 
     private TransactionResult sendFundsTo(Address recipient, BigInteger amount) {
-        org.aion.avm.api.Address recipientAddress = new org.aion.avm.api.Address(recipient.toBytes());
+        avm.Address recipientAddress = new avm.Address(recipient.toBytes());
         AvmRule.ResultWrapper result = avmRule.balanceTransfer(DEPLOYER_API, recipientAddress, amount, ENERGY_LIMIT, ENERGY_PRICE);
         return result.getTransactionResult();
     }
 
     private TransactionResult mintAccountToTrs(Address account, BigInteger amount) {
-        return callContract("mint", new org.aion.avm.api.Address(account.toBytes()), amount.longValue());
+        return callContract("mint", new avm.Address(account.toBytes()), amount.longValue());
     }
 
     private TransactionResult withdrawFromTrs(Address recipient) {
@@ -137,7 +136,7 @@ public class TrsTest {
     }
 
     private TransactionResult startTrs() {
-        return callContract("start", avmRule.block.getTimestamp());
+        return callContract("start", avmRule.getBlock().getTimestamp());
     }
 
     private TransactionResult lockTrs() {
@@ -153,9 +152,9 @@ public class TrsTest {
     }
 
     private TransactionResult callContract(Address sender, String method, Object... parameters) {
-        byte[] callData = ABIEncoder.encodeMethodArguments(method, parameters);
-        org.aion.avm.api.Address contractAddress = new org.aion.avm.api.Address(contract.toBytes());
-        org.aion.avm.api.Address senderAddress = new org.aion.avm.api.Address(sender.toBytes());
+        byte[] callData = ABIUtil.encodeMethodArguments(method, parameters);
+        avm.Address contractAddress = new avm.Address(contract.toBytes());
+        avm.Address senderAddress = new avm.Address(sender.toBytes());
         AvmRule.ResultWrapper result = avmRule.call(senderAddress, contractAddress, BigInteger.ZERO, callData, ENERGY_LIMIT, ENERGY_PRICE);
         assertTrue(result.getReceiptStatus().isSuccess());
         return result.getTransactionResult();
@@ -163,7 +162,7 @@ public class TrsTest {
     }
 
     private TransactionResult deployContract() {
-        byte[] jarBytes = new CodeAndArguments(JarBuilder.buildJarForMainAndClasses(TRS.class, AionMap.class), null).encodeToBytes();
+        byte[] jarBytes = avmRule.getDappBytes(TRS.class, null, AionMap.class);
 
         AvmRule.ResultWrapper result = avmRule.deploy(DEPLOYER_API, BigInteger.ZERO, jarBytes, ENERGY_LIMIT, ENERGY_PRICE);
         assertTrue(result.getReceiptStatus().isSuccess());

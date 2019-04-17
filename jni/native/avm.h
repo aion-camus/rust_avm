@@ -143,6 +143,17 @@ typedef struct avm_bytes (*avm_contract_address_fn)(const struct avm_address *ad
 
 typedef void (*avm_add_log_fn)(const void *handle, const struct avm_bytes *log, const i32 idx);
 
+typedef struct avm_bytes (*avm_get_transformed_code_fn)(const void *handle, const struct avm_address *address);
+
+typedef void (*avm_set_objectgraph_fn)(const void *handle, const struct avm_address *address, const struct avm_bytes *data);
+
+typedef struct avm_bytes (*avm_get_objectgraph_fn)(const void *handle, const struct avm_address *address);
+
+typedef void (*avm_set_transformed_code_fn)(
+    const void *handle,
+    const struct avm_address *address,
+    const struct avm_bytes *data);
+
 /**
  * A data structure holds all the callback function pointers.
  */
@@ -163,6 +174,10 @@ struct avm_callbacks {
     avm_send_signal_fn          send_signal;
     avm_contract_address_fn     contract_address;
     avm_add_log_fn              add_log;
+    avm_get_transformed_code_fn get_transformed_code;
+    avm_set_transformed_code_fn put_transformed_code;
+    avm_get_objectgraph_fn      get_objectgraph;
+    avm_set_objectgraph_fn      set_objectgraph;
 };
 
 typedef struct avm_bytes (*create_contract_fn)(const struct avm_address *address, const uint64_t nonce);

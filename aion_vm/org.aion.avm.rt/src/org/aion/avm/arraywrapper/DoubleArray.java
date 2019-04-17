@@ -63,7 +63,6 @@ public class DoubleArray extends Array {
     }
 
     public DoubleArray(double[] underlying) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.DoubleArray_avm_constructor_1);
         RuntimeAssertionError.assertTrue(null != underlying);
         this.underlying = underlying;
     }
@@ -96,8 +95,8 @@ public class DoubleArray extends Array {
     // Persistent Memory Support
     //========================================================
 
-    public DoubleArray(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public DoubleArray(Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
@@ -107,7 +106,7 @@ public class DoubleArray extends Array {
         int length = deserializer.readInt();
         this.underlying = new double[length];
         for (int i = 0; i < length; ++i) {
-            this.underlying[i] = Double.longBitsToDouble(deserializer.readLong());
+            this.underlying[i] = deserializer.readDouble();
         }
     }
 
@@ -117,7 +116,7 @@ public class DoubleArray extends Array {
         // TODO:  We probably want faster array copies.
         serializer.writeInt(this.underlying.length);
         for (int i = 0; i < this.underlying.length; ++i) {
-            serializer.writeLong(Double.doubleToLongBits(this.underlying[i]));
+            serializer.writeDouble(this.underlying[i]);
         }
     }
 }

@@ -1,7 +1,7 @@
 package org.aion.avm.tooling.bootstrapmethods;
 
-import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
+import org.aion.avm.core.util.ABIUtil;
+import avm.Address;
 import org.aion.avm.tooling.AvmRule;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -69,7 +69,7 @@ public class StringConcatTest {
     }
 
     private boolean callStatic(String methodName, Object... args) {
-        byte[] data = ABIEncoder.encodeMethodArguments(methodName, args);
+        byte[] data = ABIUtil.encodeMethodArguments(methodName, args);
         return (boolean) avmRule.call(sender, contract, value, data, 2_000_000, 1).getDecodedReturnData();
     }
 

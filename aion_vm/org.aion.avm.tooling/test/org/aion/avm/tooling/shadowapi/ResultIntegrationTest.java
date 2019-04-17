@@ -1,10 +1,8 @@
 package org.aion.avm.tooling.shadowapi;
 
-import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
-import org.aion.avm.api.Result;
-import org.aion.avm.core.dappreading.JarBuilder;
-import org.aion.avm.core.util.CodeAndArguments;
+import avm.Address;
+import avm.Result;
+import org.aion.avm.core.util.ABIUtil;
 import org.aion.avm.tooling.AvmRule;
 import org.junit.Assert;
 import org.junit.Before;
@@ -23,9 +21,8 @@ public class ResultIntegrationTest {
 
     @Before
     public void setUp() {
-        byte[] jar = JarBuilder.buildJarForMainAndClasses(ResultTestTarget.class);
-        byte[] txData = new CodeAndArguments(jar, new byte[0]).encodeToBytes();
-        dappAddr = avmRule.deploy(from, BigInteger.ZERO, txData).getDappAddress();
+        byte[] jar = avmRule.getDappBytes(ResultTestTarget.class, new byte[0]);
+        dappAddr = avmRule.deploy(from, BigInteger.ZERO, jar).getDappAddress();
     }
 
     @Test
@@ -63,7 +60,7 @@ public class ResultIntegrationTest {
     }
 
     private Object call(String methodName, Result ...results) {
-        byte[] txDataMethodArguments = ABIEncoder.encodeMethodArguments(methodName, (Object[]) results);
+        byte[] txDataMethodArguments = ABIUtil.encodeMethodArguments(methodName, (Object[]) results);
         return avmRule.call(from, dappAddr, BigInteger.ZERO, txDataMethodArguments).getDecodedReturnData();
     }
 }

@@ -1,17 +1,15 @@
 package org.aion.avm.core;
 
-import org.aion.avm.api.Address;
+import avm.Address;
 import org.aion.avm.core.blockchainruntime.EmptyCapabilities;
 import org.aion.avm.core.dappreading.JarBuilder;
 import org.aion.avm.core.util.CodeAndArguments;
+import org.aion.avm.core.util.ABIUtil;
 import org.aion.avm.core.util.Helpers;
-import org.aion.avm.userlib.abi.ABIEncoder;
 import org.aion.kernel.AvmTransactionResult;
 import org.aion.kernel.Block;
 import org.aion.kernel.TestingKernel;
 import org.aion.kernel.Transaction;
-import org.aion.kernel.TransactionContextImpl;
-import org.aion.vm.api.interfaces.TransactionContext;
 
 import java.math.BigInteger;
 
@@ -33,14 +31,14 @@ public class DeploymentArgumentTest {
     private static final byte[] JAR = JarBuilder.buildJarForMainAndClassesAndUserlib(DeploymentArgumentTarget.class);
     private static final byte[] SMALL_JAR = JarBuilder.buildJarForMainAndClasses(DeploymentArgumentSmallTarget.class);
 
-    private Block block;
     private TestingKernel kernel;
     private AvmImpl avm;
 
     @Before
     public void setup() {
-        this.block = new Block(new byte[32], 1, Helpers.randomAddress(), System.currentTimeMillis(), new byte[0]);
-        this.kernel = new TestingKernel();
+        Block block = new Block(new byte[32], 1, Helpers.randomAddress(),
+            System.currentTimeMillis(), new byte[0]);
+        this.kernel = new TestingKernel(block);
         this.avm = CommonAvmFactory.buildAvmInstanceForConfiguration(new EmptyCapabilities(), new AvmConfiguration());
     }
 
@@ -90,16 +88,16 @@ public class DeploymentArgumentTest {
 
 
     private AvmTransactionResult deployContract(Object... arguments) {
-        byte[] args = ABIEncoder.encodeDeploymentArguments(arguments);
+        byte[] args = ABIUtil.encodeDeploymentArguments(arguments);
         byte[] payload = new CodeAndArguments(JAR, args).encodeToBytes();
         Transaction create = Transaction.create(DEPLOYER, this.kernel.getNonce(DEPLOYER), BigInteger.ZERO, payload, ENERGY_LIMIT, ENERGY_PRICE);
-        return (AvmTransactionResult)this.avm.run(this.kernel, new TransactionContext[] {TransactionContextImpl.forExternalTransaction(create, this.block)})[0].get();
+        return (AvmTransactionResult)this.avm.run(this.kernel, new Transaction[] {create})[0].get();
     }
 
     private AvmTransactionResult callContract(org.aion.types.Address target, String methodName) {
-        byte[] argData = ABIEncoder.encodeMethodArguments(methodName);
+        byte[] argData = ABIUtil.encodeMethodArguments(methodName);
         Transaction call = Transaction.call(DEPLOYER, target, kernel.getNonce(DEPLOYER), BigInteger.ZERO, argData, ENERGY_LIMIT, ENERGY_PRICE);
-        AvmTransactionResult result = (AvmTransactionResult) avm.run(this.kernel, new TransactionContext[] {TransactionContextImpl.forExternalTransaction(call, block)})[0].get();
+        AvmTransactionResult result = (AvmTransactionResult) avm.run(this.kernel, new Transaction[] {call})[0].get();
         return result;
     }
 }

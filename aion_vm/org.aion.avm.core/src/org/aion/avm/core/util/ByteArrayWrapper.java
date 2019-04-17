@@ -18,13 +18,6 @@ public final class ByteArrayWrapper
         this.data = data;
     }
 
-    /**
-     * @return the data
-     */
-    public byte[] getData() {
-        return data;
-    }
-
     @Override
     public boolean equals(Object object)
     {

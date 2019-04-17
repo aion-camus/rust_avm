@@ -1,6 +1,6 @@
 package org.aion.avm.core.exceptionwrapping;
 
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 
@@ -13,21 +13,21 @@ public class PersistentExceptionTarget {
     private static UserDefinedException user;
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
             if (methodName.equals("storeSystem")) {
-                return ABIEncoder.encodeOneObject(storeSystem());
+                return ABIEncoder.encodeOneInteger(storeSystem());
             } else if (methodName.equals("loadSystem")) {
-                return ABIEncoder.encodeOneObject(loadSystem());
+                return ABIEncoder.encodeOneInteger(loadSystem());
             } else if (methodName.equals("storeUser")) {
-                return ABIEncoder.encodeOneObject(storeUser());
+                return ABIEncoder.encodeOneByteArray(storeUser());
             } else if (methodName.equals("loadUser")) {
-                return ABIEncoder.encodeOneObject(loadUser());
+                return ABIEncoder.encodeOneByteArray(loadUser());
             } else if (methodName.equals("getSecond")) {
-                return ABIEncoder.encodeOneObject(getSecond());
+                return ABIEncoder.encodeOneByteArray(getSecond());
             } else {
                 return new byte[0];
             }

@@ -63,7 +63,6 @@ public class FloatArray extends Array {
     }
 
     public FloatArray(float[] underlying) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.FloatArray_avm_constructor_1);
         RuntimeAssertionError.assertTrue(null != underlying);
         this.underlying = underlying;
     }
@@ -96,8 +95,8 @@ public class FloatArray extends Array {
     // Persistent Memory Support
     //========================================================
 
-    public FloatArray(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public FloatArray(Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
@@ -107,7 +106,7 @@ public class FloatArray extends Array {
         int length = deserializer.readInt();
         this.underlying = new float[length];
         for (int i = 0; i < length; ++i) {
-            this.underlying[i] = Float.intBitsToFloat(deserializer.readInt());
+            this.underlying[i] = deserializer.readFloat();
         }
     }
 
@@ -117,7 +116,7 @@ public class FloatArray extends Array {
         // TODO:  We probably want faster array copies.
         serializer.writeInt(this.underlying.length);
         for (int i = 0; i < this.underlying.length; ++i) {
-            serializer.writeInt(Float.floatToIntBits(this.underlying[i]));
+            serializer.writeFloat(this.underlying[i]);
         }
     }
 }

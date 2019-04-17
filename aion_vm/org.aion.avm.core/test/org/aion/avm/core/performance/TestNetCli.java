@@ -1,6 +1,7 @@
 package org.aion.avm.core.performance;
 
 import org.aion.avm.core.util.CodeAndArguments;
+import org.aion.avm.core.util.ABIUtil;
 import org.aion.avm.core.util.Helpers;
 
 import java.io.BufferedReader;
@@ -261,7 +262,7 @@ public class TestNetCli {
         try {
             Path path = Paths.get(dappPath);
             byte[] jar = Files.readAllBytes(path);
-            byte[] args = ABIEncoder.encodeOneObject(new int[] { heavyLevel, allocSize });
+            byte[] args = ABIEncoder.encodeOneIntegerArray(new int[] { heavyLevel, allocSize });
             final String codeArguments = Helpers.bytesToHexString(new CodeAndArguments(jar, args).encodeToBytes());
 
             ArrayList<Future<String>> results = new ArrayList<>();
@@ -372,7 +373,7 @@ public class TestNetCli {
 
     private ArrayList<String> callDapps(int accountNum, ArrayList<String> accounts, String password, ArrayList<String> dapps, ExecutorService pool) {
         ArrayList<String> callReceipts = new ArrayList<>();
-        final String callEncoding = Helpers.bytesToHexString(ABIEncoder.encodeMethodArguments("cpuHeavy"));
+        final String callEncoding = Helpers.bytesToHexString(ABIUtil.encodeMethodArguments("cpuHeavy"));
         ArrayList<Future<String>> results = new ArrayList<>();
         for (int i = 0; i < accountNum; ++i) {
             final String account = accounts.get(i);

@@ -1,7 +1,7 @@
 package org.aion.avm.tooling.poc;
 
-import org.aion.avm.api.Address;
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Address;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 
@@ -13,12 +13,12 @@ public class Main {
      * This wallet instance is transparently put into storage.
      */
     static {
-        Object[] arguments = ABIDecoder.decodeArguments(BlockchainRuntime.getData());
-        Address owner1 = (Address) arguments[0];
-        Address owner2 = (Address) arguments[1];
-        int confirmationsRequired = (int) arguments[2];
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        Address owner1 = decoder.decodeOneAddress();
+        Address owner2 = decoder.decodeOneAddress();
+        int confirmationsRequired = decoder.decodeOneInteger();
         Address[] owners = {
-                BlockchainRuntime.getCaller(),
+                Blockchain.getCaller(),
                 owner1,
                 owner2
         };
@@ -33,16 +33,15 @@ public class Main {
      * @return the encoded return data of the method being called.
      */
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
-            Object[] argValues = ABIDecoder.decodeArguments(inputBytes);
             if (methodName.equals("propose")) {
-                return ABIEncoder.encodeOneObject(Wallet.propose((Address) argValues[0], (Long) argValues[1], (byte[]) argValues[2], (Long) argValues[3]));
+                return ABIEncoder.encodeOneByteArray(Wallet.propose(decoder.decodeOneAddress(), decoder.decodeOneLong(), decoder.decodeOneByteArray(), decoder.decodeOneLong()));
             } else if (methodName.equals("confirm")) {
-                return ABIEncoder.encodeOneObject(Wallet.confirm((byte[]) argValues[0]));
+                return ABIEncoder.encodeOneBoolean(Wallet.confirm(decoder.decodeOneByteArray()));
             } else {
                 return new byte[0];
             }

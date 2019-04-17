@@ -1,31 +1,31 @@
 package org.aion.avm.core.shadowing.testString;
 
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 
 public class TestResource {
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
             if (methodName.equals("singleStringReturnInt")) {
-                return ABIEncoder.encodeOneObject(singleStringReturnInt());
+                return ABIEncoder.encodeOneIntegerArray(singleStringReturnInt());
             } else if (methodName.equals("singleStringReturnBoolean")) {
-                return ABIEncoder.encodeOneObject(singleStringReturnBoolean());
+                return ABIEncoder.encodeOneBooleanArray(singleStringReturnBoolean());
             }  else if (methodName.equals("singleStringReturnChar")) {
-                return ABIEncoder.encodeOneObject(singleStringReturnChar());
+                return ABIEncoder.encodeOneCharacter(singleStringReturnChar());
             }  else if (methodName.equals("singleStringReturnBytes")) {
-                return ABIEncoder.encodeOneObject(singleStringReturnBytes());
+                return ABIEncoder.encodeOneByteArray(singleStringReturnBytes());
             }  else if (methodName.equals("singleStringReturnLowerCase")) {
-                return ABIEncoder.encodeOneObject(singleStringReturnLowerCase());
+                return ABIEncoder.encodeOneString(singleStringReturnLowerCase());
             }  else if (methodName.equals("singleStringReturnUpperCase")) {
-                return ABIEncoder.encodeOneObject(singleStringReturnUpperCase());
-            }   else if (methodName.equals("stringFromCodePoints")) {
-                return ABIEncoder.encodeOneObject(stringFromCodePoints());
+                return ABIEncoder.encodeOneString(singleStringReturnUpperCase());
+            }   else if (methodName.equals("stringReturnSubSequence")) {
+                return ABIEncoder.encodeOneString(stringReturnSubSequence());
             } else {
                 return new byte[0];
             }
@@ -81,8 +81,8 @@ public class TestResource {
         return str1.toUpperCase();
     }
 
-    public static String stringFromCodePoints(){
-        String str1 = new String(new int[]{104, 101, 108, 108, 111, 1593}, 0, 5);
-        return str1;
+    public static String stringReturnSubSequence(){
+        String str = "ReturnSubSequence";
+        return str.subSequence(6, 9).toString();
     }
 }

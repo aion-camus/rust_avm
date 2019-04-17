@@ -1,8 +1,7 @@
 package org.aion.avm.tooling.blockchainruntime;
 
-import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.Address;
+import org.aion.avm.core.util.ABIUtil;
+import avm.Address;
 import org.aion.avm.tooling.AvmRule;
 import org.aion.vm.api.interfaces.TransactionResult;
 import org.junit.ClassRule;
@@ -235,14 +234,14 @@ public class InternalCallAddressesTest {
     private Address[] callInternalCallAddressesContract(Address contract, Address[] otherContracts, boolean recurseFirst) {
         byte[] callData;
         if (recurseFirst) {
-            callData = ABIEncoder.encodeMethodArguments("runInternalCallsAndTrackAddressRecurseThenGrabOwnAddress", (Object)otherContracts);
+            callData = ABIUtil.encodeMethodArguments("runInternalCallsAndTrackAddressRecurseThenGrabOwnAddress", (Object)otherContracts);
         } else {
-            callData = ABIEncoder.encodeMethodArguments("runInternalCallsAndTrackAddressGrabOwnAddressThenRecurse", (Object)otherContracts);
+            callData = ABIUtil.encodeMethodArguments("runInternalCallsAndTrackAddressGrabOwnAddressThenRecurse", (Object)otherContracts);
         }
 
         TransactionResult result = avmRule.call(from, contract, BigInteger.ZERO, callData, energyLimit, energyPrice).getTransactionResult();
         assertTrue(result.getResultCode().isSuccess());
-        return (Address[]) ABIDecoder.decodeOneObject(result.getReturnData());
+        return (Address[]) ABIUtil.decodeOneObject(result.getReturnData());
     }
 
     private static Address[] joinArrays(Address[] array1, Address[] array2) {

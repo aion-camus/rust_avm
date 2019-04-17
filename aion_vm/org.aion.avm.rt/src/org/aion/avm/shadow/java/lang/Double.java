@@ -1,9 +1,7 @@
 package org.aion.avm.shadow.java.lang;
 
-import org.aion.avm.internal.IDeserializer;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.IObject;
-import org.aion.avm.internal.IPersistenceToken;
 import org.aion.avm.internal.RuntimeAssertionError;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
@@ -58,7 +56,7 @@ public class Double extends Number implements Comparable<Double>{
         return internalToString(a);
     }
 
-    public static Double avm_valueOf(String a)
+    public static Double avm_valueOf(String a) throws NumberFormatException
     {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Double_avm_valueOf);
         return new Double(internalParseDouble(a));
@@ -69,7 +67,7 @@ public class Double extends Number implements Comparable<Double>{
         return new Double(origValue);
     }
 
-    public static double avm_parseDouble(String a)
+    public static double avm_parseDouble(String a) throws NumberFormatException
     {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Double_avm_parseDouble);
         return internalParseDouble(a);
@@ -227,8 +225,8 @@ public class Double extends Number implements Comparable<Double>{
     // Methods below are used by runtime and test code only!
     //========================================================
 
-    public Double(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public Double(java.lang.Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     private double v;

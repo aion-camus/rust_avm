@@ -20,12 +20,6 @@ public class Transaction implements TransactionInterface {
         return new Transaction(Type.CALL, from, to, nonce, value, data, energyLimit, energyPrice);
     }
 
-    public static Transaction garbageCollect(Address target, BigInteger nonce, long energyLimit, long energyPrice) {
-        // This may seem a bit odd but we state that the "target" of the GC is the "sender" address.
-        // This is because, on a conceptual level, the GC is "sent to itself" but also allows the nonce check to be consistent.
-        return new Transaction(Type.GARBAGE_COLLECT, target, target, nonce, BigInteger.ZERO, new byte[0], energyLimit, energyPrice);
-    }
-
     public enum Type {
         /**
          * The CREATE is used to deploy a new DApp.
@@ -34,12 +28,7 @@ public class Transaction implements TransactionInterface {
         /**
          * The CALL is used when sending an invocation to an existing DApp.
          */
-        CALL(0),
-        /**
-         * The GARBAGE_COLLECT is a special transaction which asks that the target DApp's storage be deterministically collected.
-         * Note that this is the only transaction type which will result in a negative TransactionResult.energyUsed.
-         */
-        GARBAGE_COLLECT(5);
+        CALL(0);
 
         private int value;
 
@@ -49,6 +38,10 @@ public class Transaction implements TransactionInterface {
 
         public int toInt() {
             return this.value;
+        }
+
+        public byte toByte() {
+            return (byte) this.value;
         }
     }
 
@@ -158,7 +151,13 @@ public class Transaction implements TransactionInterface {
 
     @Override
     public Address getDestinationAddress() {
-        return org.aion.types.Address.wrap(to);
+        // The destination can be null in the case of contract creation.
+        return (to == null) ? null : org.aion.types.Address.wrap(to);
+    }
+
+    @Override
+    public Address getContractAddress() {
+        throw new AssertionError("Did not expect this to be called.");
     }
 
     @Override
@@ -211,6 +210,11 @@ public class Transaction implements TransactionInterface {
     @Override
     public boolean isContractCreationTransaction() {
         return this.to == null;
+    }
+
+    @Override
+    public byte getKind() {
+        return type.toByte();
     }
 
     @Override

@@ -1,20 +1,19 @@
 package org.aion.avm.core;
 
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 
 public class EnergyUsageDebugModeTarget {
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
-            Object[] argValues = ABIDecoder.decodeArguments(inputBytes);
             if (methodName.equals("tryToDivideInteger")) {
-                return ABIEncoder.encodeOneObject(tryToDivideInteger((Integer) argValues[0], (Integer) argValues[1]));
+                return ABIEncoder.encodeOneInteger(tryToDivideInteger(decoder.decodeOneInteger(), decoder.decodeOneInteger()));
             } else {
                 return new byte[0];
             }

@@ -106,8 +106,8 @@ public class ObjectArray extends Array implements IObjectArray {
     // Persistent Memory Support
     //========================================================
 
-    public ObjectArray(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public ObjectArray(Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
@@ -116,7 +116,7 @@ public class ObjectArray extends Array implements IObjectArray {
         int length = deserializer.readInt();
         this.underlying = new Object[length];
         for (int i = 0; i < length; ++i) {
-            this.underlying[i] = deserializer.readStub();
+            this.underlying[i] = deserializer.readObject();
         }
     }
 
@@ -125,7 +125,7 @@ public class ObjectArray extends Array implements IObjectArray {
 
         serializer.writeInt(this.underlying.length);
         for (int i = 0; i < this.underlying.length; ++i) {
-            serializer.writeStub((org.aion.avm.shadow.java.lang.Object)this.underlying[i]);
+            serializer.writeObject((org.aion.avm.shadow.java.lang.Object)this.underlying[i]);
         }
     }
 }

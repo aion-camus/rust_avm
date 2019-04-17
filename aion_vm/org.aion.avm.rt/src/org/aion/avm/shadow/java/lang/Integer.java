@@ -1,9 +1,7 @@
 package org.aion.avm.shadow.java.lang;
 
-import org.aion.avm.internal.IDeserializer;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.IObject;
-import org.aion.avm.internal.IPersistenceToken;
 import org.aion.avm.internal.RuntimeAssertionError;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
@@ -19,7 +17,7 @@ public class Integer extends Number implements Comparable<Integer> {
 
     public static final int avm_SIZE = java.lang.Integer.SIZE;
 
-    public static final int avm_BYTES = java.lang.Integer.SIZE;
+    public static final int avm_BYTES = java.lang.Integer.BYTES;
 
     public static final Class<Integer> avm_TYPE = new Class(java.lang.Integer.TYPE);
 
@@ -74,12 +72,12 @@ public class Integer extends Number implements Comparable<Integer> {
         return java.lang.Integer.parseInt(s.avm_toString().getUnderlying(), beginIndex, endIndex, radix);
     }
 
-    public static int avm_parseUnsignedInt(String s, int radix){
+    public static int avm_parseUnsignedInt(String s, int radix) throws NumberFormatException {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Integer_avm_parseUnsignedInt);
         return java.lang.Integer.parseUnsignedInt(s.getUnderlying(), radix);
     }
 
-    public static int avm_parseUnsignedInt(String s){
+    public static int avm_parseUnsignedInt(String s) throws NumberFormatException {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Integer_avm_parseUnsignedInt_1);
         return java.lang.Integer.parseUnsignedInt(s.getUnderlying());
     }
@@ -291,8 +289,8 @@ public class Integer extends Number implements Comparable<Integer> {
     // Methods below are used by runtime and test code only!
     //========================================================
 
-    public Integer(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public Integer(java.lang.Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     private int v;

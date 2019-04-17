@@ -1,12 +1,12 @@
 package org.aion.avm.tooling.poc;
 
 import org.aion.avm.userlib.abi.ABIDecoder;
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Blockchain;
 import org.aion.avm.userlib.AionBuffer;
 
 public class AionBufferPerfContract {
-    public static final int NUM_ELEMENTS = 4_000;
-    public static final int TRANSFER_SIZE = 1_000;
+    public static final int NUM_ELEMENTS = 400;
+    public static final int TRANSFER_SIZE = 100;
     private static final byte[] BYTES = new byte[TRANSFER_SIZE];
     private static AionBuffer targetNobytes, targetNoChars, targetNoShorts, targetNoInts,
         targetNoFloats, targetNoLongs, targetNoDoubles, targetHasBytes, targetHasChars,
@@ -35,8 +35,8 @@ public class AionBufferPerfContract {
     }
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {

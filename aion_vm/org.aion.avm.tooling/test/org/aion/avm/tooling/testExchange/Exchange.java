@@ -1,8 +1,8 @@
 package org.aion.avm.tooling.testExchange;
 
 import java.math.BigInteger;
-import org.aion.avm.api.Address;
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Address;
+import avm.Blockchain;
 import org.aion.avm.userlib.AionMap;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
@@ -16,7 +16,7 @@ public class Exchange {
     private static Address owner;
 
     public static void init(){
-        owner = BlockchainRuntime.getCaller();
+        owner = Blockchain.getCaller();
         coinListing = new AionMap<>();
     }
 
@@ -29,7 +29,7 @@ public class Exchange {
             return false;
         }
 
-        if (BlockchainRuntime.getCaller().equals(owner) && verifyContractAddress(name, contractAddr)){
+        if (Blockchain.getCaller().equals(owner) && verifyContractAddress(name, contractAddr)){
             coinListing.put(String.valueOf(name), contractAddr);
             return true;
         }
@@ -51,13 +51,18 @@ public class Exchange {
         }
         Address coinContract = coinListing.get(String.valueOf(coin));
 
-        Address sender = BlockchainRuntime.getCaller();
+        Address sender = Blockchain.getCaller();
 
-        byte[] args = ABIEncoder.encodeMethodArguments("allowance", sender, BlockchainRuntime.getAddress());
+        byte[] methodNameBytes = ABIEncoder.encodeOneString("allowance");
+        byte[] argBytes1 = ABIEncoder.encodeOneAddress(sender);
+        byte[] argBytes2 = ABIEncoder.encodeOneAddress(Blockchain.getAddress());
+        byte[] args = concatenateArrays(methodNameBytes, argBytes1, argBytes2);
 
-        byte[] result = BlockchainRuntime.call(coinContract, BigInteger.ZERO, args, 1000000L).getReturnData();
+        byte[] result = Blockchain.call(coinContract, BigInteger.ZERO, args, 1000000L).getReturnData();
 
-        if (((long)ABIDecoder.decodeOneObject(result)) >= amount){
+        ABIDecoder decoder = new ABIDecoder(result);
+
+        if (decoder.decodeOneLong() >= amount){
             toProcess = new ExchangeTransaction(coin, sender, to, amount);
             return true;
         }
@@ -66,7 +71,7 @@ public class Exchange {
     }
 
     public static boolean processExchangeTransaction(){
-        if (!BlockchainRuntime.getCaller().equals(owner)){
+        if (!Blockchain.getCaller().equals(owner)){
             return false;
         }
 
@@ -80,15 +85,36 @@ public class Exchange {
 
         Address coinContract = coinListing.get(String.valueOf(toProcess.getCoin()));
 
-        byte[] args = ABIEncoder.encodeMethodArguments("transferFrom", toProcess.getFrom(), toProcess.getTo(), toProcess.getAmount());
+        byte[] methodNameBytes = ABIEncoder.encodeOneString("transferFrom");
+        byte[] argBytes1 = ABIEncoder.encodeOneAddress(toProcess.getFrom());
+        byte[] argBytes2 = ABIEncoder.encodeOneAddress(toProcess.getTo());
+        byte[] argBytes3 = ABIEncoder.encodeOneLong(toProcess.getAmount());
+        byte[] args = concatenateArrays(methodNameBytes, argBytes1, argBytes2, argBytes3);
 
-        byte[] result = BlockchainRuntime.call(coinContract, BigInteger.ZERO, args, 1000000L).getReturnData();
+        byte[] result = Blockchain.call(coinContract, BigInteger.ZERO, args, 1000000L).getReturnData();
 
-        if ((boolean)ABIDecoder.decodeOneObject(result)){
+        ABIDecoder decoder = new ABIDecoder(result);
+        boolean decodedBool = decoder.decodeOneBoolean();
+
+        if (decodedBool){
             toProcess = null;
         }
 
-        return (boolean)ABIDecoder.decodeOneObject(result);
+        return decodedBool;
+    }
+
+    private static byte[] concatenateArrays(byte[]... arrays) {
+        int length = 0;
+        for(byte[] array : arrays) {
+            length += array.length;
+        }
+        byte[] result = new byte[length];
+        int writtenSoFar = 0;
+        for(byte[] array : arrays) {
+            System.arraycopy(array, 0, result, writtenSoFar, array.length);
+            writtenSoFar += array.length;
+        }
+        return result;
     }
 
     public static class ExchangeTransaction {

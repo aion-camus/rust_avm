@@ -2,8 +2,8 @@ package org.aion.avm.tooling;
 
 import java.math.BigInteger;
 import org.aion.avm.userlib.abi.ABIDecoder;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIEncoder;
-import org.aion.avm.api.BlockchainRuntime;
 
 public class LoggingTarget {
     public static final byte[] TOPIC1 = new byte[]{ 0xf, 0xe, 0xd, 0xc, 0xb, 0xa };
@@ -18,17 +18,16 @@ public class LoggingTarget {
     public static final byte[] DATA5 = new byte[]{ 0x5 };
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain.getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
-            Object[] argValues = ABIDecoder.decodeArguments(inputBytes);
             if (methodName.equals("spawnInternalTransactionsAndHitLogsAtEachLevel")) {
-                spawnInternalTransactionsAndHitLogsAtEachLevel((Integer) argValues[0]);
+                spawnInternalTransactionsAndHitLogsAtEachLevel(decoder.decodeOneInteger());
                 return new byte[0];
             } else if (methodName.equals("spawnInternalTransactionsAndHitLogsAtBottomLevel")) {
-                spawnInternalTransactionsAndHitLogsAtBottomLevel((Integer) argValues[0]);
+                spawnInternalTransactionsAndHitLogsAtBottomLevel(decoder.decodeOneInteger());
                 return new byte[0];
             } else if (methodName.equals("hitLogs")) {
                 hitLogs();
@@ -42,15 +41,23 @@ public class LoggingTarget {
     public static void spawnInternalTransactionsAndHitLogsAtEachLevel(int numInternals) {
         hitLogs();
         if (numInternals > 0) {
-            byte[] data = ABIEncoder.encodeMethodArguments("spawnInternalTransactionsAndHitLogsAtEachLevel", numInternals - 1);
-            BlockchainRuntime.call(BlockchainRuntime.getAddress(), BigInteger.ZERO, data, BlockchainRuntime.getRemainingEnergy());
+            byte[] arg1 = ABIEncoder.encodeOneString("spawnInternalTransactionsAndHitLogsAtEachLevel");
+            byte[] arg2 = ABIEncoder.encodeOneInteger(numInternals  -1);
+            byte[] data = new byte[arg1.length + arg2.length];
+            System.arraycopy(arg1, 0, data, 0, arg1.length);
+            System.arraycopy(arg2, 0, data, arg1.length, arg2.length);
+            Blockchain.call(Blockchain.getAddress(), BigInteger.ZERO, data, Blockchain.getRemainingEnergy());
         }
     }
 
     public static void spawnInternalTransactionsAndHitLogsAtBottomLevel(int numInternals) {
         if (numInternals > 0) {
-            byte[] data = ABIEncoder.encodeMethodArguments("spawnInternalTransactionsAndHitLogsAtBottomLevel", numInternals - 1);
-            BlockchainRuntime.call(BlockchainRuntime.getAddress(), BigInteger.ZERO, data, BlockchainRuntime.getRemainingEnergy());
+            byte[] arg1 = ABIEncoder.encodeOneString("spawnInternalTransactionsAndHitLogsAtBottomLevel");
+            byte[] arg2 = ABIEncoder.encodeOneInteger(numInternals  -1);
+            byte[] data = new byte[arg1.length + arg2.length];
+            System.arraycopy(arg1, 0, data, 0, arg1.length);
+            System.arraycopy(arg2, 0, data, arg1.length, arg2.length);
+            Blockchain.call(Blockchain.getAddress(), BigInteger.ZERO, data, Blockchain.getRemainingEnergy());
         } else {
             hitLogs();
         }
@@ -65,23 +72,23 @@ public class LoggingTarget {
     }
 
     private static void hitLog1() {
-        BlockchainRuntime.log(DATA1);
+        Blockchain.log(DATA1);
     }
 
     private static void hitLog2() {
-        BlockchainRuntime.log(TOPIC1, DATA2);
+        Blockchain.log(TOPIC1, DATA2);
     }
 
     private static void hitLog3() {
-        BlockchainRuntime.log(TOPIC1, TOPIC2, DATA3);
+        Blockchain.log(TOPIC1, TOPIC2, DATA3);
     }
 
     private static void hitLog4() {
-        BlockchainRuntime.log(TOPIC1, TOPIC2, TOPIC3, DATA4);
+        Blockchain.log(TOPIC1, TOPIC2, TOPIC3, DATA4);
     }
 
     private static void hitLog5() {
-        BlockchainRuntime.log(TOPIC1, TOPIC2, TOPIC3, TOPIC4, DATA5);
+        Blockchain.log(TOPIC1, TOPIC2, TOPIC3, TOPIC4, DATA5);
     }
 
 }

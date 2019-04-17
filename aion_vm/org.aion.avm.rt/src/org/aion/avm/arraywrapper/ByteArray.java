@@ -75,7 +75,6 @@ public class ByteArray extends Array {
     }
 
     public ByteArray(byte[] underlying) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ByteArray_avm_constructor_1);
         RuntimeAssertionError.assertTrue(null != underlying);
         this.underlying = underlying;
     }
@@ -108,8 +107,8 @@ public class ByteArray extends Array {
     // Persistent Memory Support
     //========================================================
 
-    public ByteArray(IDeserializer deserializer, IPersistenceToken persistenceToken) {
-        super(deserializer, persistenceToken);
+    public ByteArray(Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {

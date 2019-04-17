@@ -1,14 +1,15 @@
 package org.aion.avm.tooling;
 
-import org.aion.avm.api.Address;
+import avm.Address;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.AvmImpl;
 import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.core.dappreading.JarBuilder;
+import org.aion.avm.core.util.ABIUtil;
 import org.aion.avm.core.util.CodeAndArguments;
 import org.aion.avm.core.util.Helpers;
 import org.aion.avm.tooling.abi.ABICompiler;
-import org.aion.avm.userlib.abi.ABIDecoder;
+import org.aion.avm.tooling.deploy.JarOptimizer;
 import org.aion.kernel.*;
 import org.aion.vm.api.interfaces.*;
 import org.junit.rules.TestRule;
@@ -27,17 +28,19 @@ public final class AvmRule implements TestRule {
 
     private boolean debugMode;
     private final ABICompiler compiler;
-    public final TestingKernel kernel;
+    private final JarOptimizer jarOptimizer;
+    public TestingKernel kernel;
     public AvmImpl avm;
-    public Block block = new Block(new byte[32], 1, Helpers.randomAddress(), System.currentTimeMillis(), new byte[0]);
+    private Block block = new Block(new byte[32], 1, Helpers.randomAddress(), System.currentTimeMillis(), new byte[0]);
 
     /**
      * @param debugMode enable/disable the debugging features
      */
     public AvmRule(boolean debugMode) {
         this.debugMode = debugMode;
-        this.kernel = new TestingKernel();
+        this.kernel = new TestingKernel(block);
         compiler = new ABICompiler();
+        jarOptimizer = new JarOptimizer(debugMode);
     }
 
     @Override
@@ -69,20 +72,10 @@ public final class AvmRule implements TestRule {
      */
     public byte[] getDappBytes(Class<?> mainClass, byte[] arguments, Class<?>... otherClasses) {
         byte[] jar = JarBuilder.buildJarForMainAndClasses(mainClass, otherClasses);
-        return new CodeAndArguments(jar, arguments).encodeToBytes();
+        compiler.compile(jar);
+        byte[] optimizedDappBytes = jarOptimizer.optimize(compiler.getJarFileBytes());
+        return new CodeAndArguments(optimizedDappBytes, arguments).encodeToBytes();
     }
-    /**
-     * Retrieves bytes corresponding to the in-memory representation of Dapp jar.
-     * @param mainClass Main class of the Dapp to include and list in manifest (can be null).
-     * @param arguments Constructor arguments
-     * @param otherClasses Other classes to include (main is already included).
-     * @return Byte array corresponding to the deployable Dapp jar and arguments.
-     */
-    public byte[] getDappBytesWithUserlib(Class<?> mainClass, byte[] arguments, Class<?>... otherClasses) {
-        byte[] jar = JarBuilder.buildJarForMainAndClassesAndUserlib(mainClass, otherClasses);
-        return new CodeAndArguments(jar, arguments).encodeToBytes();
-    }
-
 
     /**
      * Deploys the Dapp.
@@ -151,8 +144,7 @@ public final class AvmRule implements TestRule {
     public ResultWrapper balanceTransfer(Address from, Address to, BigInteger value, long energyLimit, long energyPrice) {
         Transaction tx = Transaction.call(org.aion.types.Address.wrap(from.unwrap()), org.aion.types.Address.wrap(to.unwrap()), kernel.getNonce(org.aion.types.Address.wrap(from.unwrap())), value, new byte[0], energyLimit, energyPrice);
 
-        TransactionContextImpl context = TransactionContextImpl.forExternalTransaction(tx, block);
-        return new ResultWrapper(avm.run(this.kernel, new TransactionContext[]{context})[0].get(), context.getSideEffects());
+        return new ResultWrapper(avm.run(this.kernel, new Transaction[]{tx})[0].get());
     }
 
     /**
@@ -173,32 +165,39 @@ public final class AvmRule implements TestRule {
         return new Address(TestingKernel.PREMINED_ADDRESS.toBytes());
     }
 
+    /**
+     * @return Address of the account with huge initial (pre-mined) balance in the kernel
+     */
+    public Address getBigPreminedAccount() {
+        return new Address(TestingKernel.BIG_PREMINED_ADDRESS.toBytes());
+    }
+
     private ResultWrapper callDapp(Address from, Address dappAddress, BigInteger value, byte[] transactionData, long energyLimit, long energyPrice) {
         Transaction tx = Transaction.call(org.aion.types.Address.wrap(from.unwrap()), org.aion.types.Address.wrap(dappAddress.unwrap()), kernel.getNonce(org.aion.types.Address.wrap(from.unwrap())), value, transactionData, energyLimit, energyPrice);
-        TransactionContextImpl context = TransactionContextImpl.forExternalTransaction(tx, block);
-        return new ResultWrapper(avm.run(this.kernel, new TransactionContext[]{context})[0].get(), context.getSideEffects());
+        return new ResultWrapper(avm.run(this.kernel, new Transaction[]{tx})[0].get());
     }
 
     private ResultWrapper deployDapp(Address from, BigInteger value, byte[] dappBytes, long energyLimit, long energyPrice) {
+        Transaction tx = Transaction.create(org.aion.types.Address.wrap(from.unwrap()), kernel.getNonce(org.aion.types.Address.wrap(from.unwrap())), value, dappBytes, energyLimit, energyPrice);
+        return new ResultWrapper(avm.run(this.kernel, new Transaction[]{tx})[0].get());
+    }
 
-        CodeAndArguments oldCodeAndArguments = CodeAndArguments.decodeFromBytes(dappBytes);
-        compiler.compile(oldCodeAndArguments.code);
-        CodeAndArguments newCodeAndArguments = new CodeAndArguments(compiler.getJarFileBytes(),
-            oldCodeAndArguments.arguments);
-        byte[] deployBytes = newCodeAndArguments.encodeToBytes();
+    public Block getBlock() {
+        return block;
+    }
 
-        Transaction tx = Transaction.create(org.aion.types.Address.wrap(from.unwrap()), kernel.getNonce(org.aion.types.Address.wrap(from.unwrap())), value, deployBytes, energyLimit, energyPrice);
-        TransactionContextImpl context = TransactionContextImpl.forExternalTransaction(tx, block);
-        return new ResultWrapper(avm.run(this.kernel, new TransactionContext[]{context})[0].get(), context.getSideEffects());
+    public void updateBlock(Block b) {
+        this.block = b;
+        this.kernel.updateBlock(b);
     }
 
     public static class ResultWrapper {
         TransactionResult result;
         TransactionSideEffects sideEffects;
 
-        ResultWrapper(TransactionResult result, TransactionSideEffects sideEffects) {
+        ResultWrapper(TransactionResult result) {
             this.result = result;
-            this.sideEffects = sideEffects;
+            this.sideEffects = result.getSideEffects();
         }
 
         /**
@@ -223,7 +222,7 @@ public final class AvmRule implements TestRule {
          * @return Decoded returned data of the call
          */
         public Object getDecodedReturnData() {
-            return ABIDecoder.decodeOneObject(result.getReturnData());
+            return ABIUtil.decodeOneObject(result.getReturnData());
         }
 
         /**

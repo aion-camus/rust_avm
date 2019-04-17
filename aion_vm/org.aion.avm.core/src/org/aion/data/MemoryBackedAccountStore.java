@@ -11,7 +11,9 @@ public class MemoryBackedAccountStore implements IAccountStore {
     private BigInteger balance = BigInteger.ZERO;
     private long nonce = 0;
     private byte[] code = null;
+    private byte[] transformedCode = null;
     private final Map<ByteArrayWrapper, byte[]> storage = new HashMap<>();
+    private byte[] graph = null;
 
     @Override
     public byte[] getCode() {
@@ -21,6 +23,16 @@ public class MemoryBackedAccountStore implements IAccountStore {
     @Override
     public void setCode(byte[] code) {
         this.code = code;
+    }
+
+    @Override
+    public byte[] getTransformedCode() {
+        return this.transformedCode;
+    }
+
+    @Override
+    public void setTransformedCode(byte[] code) {
+        this.transformedCode = code;
     }
 
     @Override
@@ -54,7 +66,22 @@ public class MemoryBackedAccountStore implements IAccountStore {
     }
 
     @Override
+    public void removeData(byte[] key) {
+        this.storage.remove(new ByteArrayWrapper(key));
+    }
+
+    @Override
     public Map<ByteArrayWrapper, byte[]> getStorageEntries() {
         return this.storage;
+    }
+
+    @Override
+    public void setObjectGraph(byte[] data) {
+        this.graph = data;
+    }
+
+    @Override
+    public byte[] getObjectGraph() {
+        return this.graph;
     }
 }

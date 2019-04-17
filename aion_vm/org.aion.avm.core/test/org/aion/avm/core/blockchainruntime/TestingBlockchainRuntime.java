@@ -1,7 +1,7 @@
 package org.aion.avm.core.blockchainruntime;
 
-import org.aion.avm.shadowapi.org.aion.avm.api.Address;
-import org.aion.avm.shadowapi.org.aion.avm.api.Result;
+import org.aion.avm.shadowapi.avm.Address;
+import org.aion.avm.shadowapi.avm.Result;
 import org.aion.avm.internal.IBlockchainRuntime;
 import org.aion.avm.arraywrapper.ByteArray;
 import org.aion.avm.core.IExternalCapabilities;
@@ -11,6 +11,7 @@ import org.aion.avm.internal.RevertException;
 import org.aion.avm.internal.RuntimeAssertionError;
 import org.aion.avm.shadow.java.lang.String;
 import org.aion.avm.shadow.java.math.BigInteger;
+import org.aion.kernel.Block;
 import org.aion.kernel.TestingKernel;
 
 import java.nio.charset.StandardCharsets;
@@ -42,8 +43,9 @@ public class TestingBlockchainRuntime implements IBlockchainRuntime {
     private long blockEnergyLimit = 10_000_000L;
     private java.math.BigInteger blockDifficulty = java.math.BigInteger.valueOf(1000L);
 
+    private Block block = new Block(new byte[32], blockNumber, blockCoinbase, blockTimstamp, new byte[0]);
 
-    private KernelInterface kernel = new TestingKernel();
+    private KernelInterface kernel = new TestingKernel(block);
     private Map<java.lang.String, Integer> eventCounter = new HashMap<>();
 
     public TestingBlockchainRuntime(IExternalCapabilities capabilities) {
@@ -154,6 +156,25 @@ public class TestingBlockchainRuntime implements IBlockchainRuntime {
     @Override
     public Address avm_getBlockCoinbase() {
         return new Address(blockCoinbase.toBytes());
+    }
+
+    @Override
+    public void avm_putStorage(ByteArray key, ByteArray value) {
+        Objects.requireNonNull(address);
+        if (value == null) {
+            kernel.removeStorage(address, key.getUnderlying());
+        } else {
+            kernel.putStorage(address, key.getUnderlying(), value.getUnderlying());
+        }
+    }
+
+    @Override
+    public ByteArray avm_getStorage(ByteArray key) {
+        Objects.requireNonNull(key);
+        byte[] data = this.kernel.getStorage(address, key.getUnderlying());
+        return (null != data)
+            ? new ByteArray(data)
+            : null;
     }
 
     @Override

@@ -1,8 +1,8 @@
 package org.aion.avm.core;
 
 import java.math.BigInteger;
-import org.aion.avm.api.Address;
-import org.aion.avm.api.BlockchainRuntime;
+import avm.Address;
+import avm.Blockchain;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 
@@ -15,20 +15,19 @@ import org.aion.avm.userlib.abi.ABIEncoder;
 public class SpawnerDApp {
     private static final byte[] CODE_AND_ARGS;
     static {
-        CODE_AND_ARGS = BlockchainRuntime.getData();
+        CODE_AND_ARGS = Blockchain.getData();
     }
 
     public static byte[] main() {
-        byte[] inputBytes = BlockchainRuntime.getData();
-        String methodName = ABIDecoder.decodeMethodName(inputBytes);
+        ABIDecoder decoder = new ABIDecoder(Blockchain  .getData());
+        String methodName = decoder.decodeMethodName();
         if (methodName == null) {
             return new byte[0];
         } else {
-            Object[] argValues = ABIDecoder.decodeArguments(inputBytes);
             if (methodName.equals("spawnAndCall")) {
-                return ABIEncoder.encodeOneObject(spawnAndCall((byte[]) argValues[0]));
+                return ABIEncoder.encodeOneByteArray(spawnAndCall(decoder.decodeOneByteArray()));
             } else if (methodName.equals("spawnOnly")) {
-                return ABIEncoder.encodeOneObject(spawnOnly((Boolean) argValues[0]));
+                return ABIEncoder.encodeOneAddress(spawnOnly(decoder.decodeOneBoolean()));
             } else {
                 return new byte[0];
             }
@@ -36,14 +35,14 @@ public class SpawnerDApp {
     }
 
     public static byte[] spawnAndCall(byte[] array) {
-        byte[] contractAddress = BlockchainRuntime.create(BigInteger.ZERO, CODE_AND_ARGS, 10_000_000L).getReturnData();
-        return BlockchainRuntime.call(new Address(contractAddress), BigInteger.ZERO, array, 10_000_000L).getReturnData();
+        byte[] contractAddress = Blockchain.create(BigInteger.ZERO, CODE_AND_ARGS, 10_000_000L).getReturnData();
+        return Blockchain.call(new Address(contractAddress), BigInteger.ZERO, array, 10_000_000L).getReturnData();
     }
 
     public static Address spawnOnly(boolean shouldFail) {
-        byte[] contractAddress = BlockchainRuntime.create(BigInteger.ZERO, CODE_AND_ARGS, 10_000_000L).getReturnData();
+        byte[] contractAddress = Blockchain.create(BigInteger.ZERO, CODE_AND_ARGS, 10_000_000L).getReturnData();
         if (shouldFail) {
-            BlockchainRuntime.invalid();
+            Blockchain.invalid();
         }
         return new Address(contractAddress);
     }

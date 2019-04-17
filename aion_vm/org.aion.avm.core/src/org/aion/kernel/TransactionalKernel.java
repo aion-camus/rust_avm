@@ -11,6 +11,7 @@ import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.types.Address;
 import org.aion.vm.api.interfaces.KernelInterface;
 
+
 /**
  * A transactional implementation of the KernelInterface which only writes back to its "parent" on commit.
  * 
@@ -25,32 +26,23 @@ public class TransactionalKernel implements KernelInterface {
     private final Set<ByteArrayWrapper> deletedAccountProjection;
     private final Set<ByteArrayWrapper> cachedAccountBalances;
 
+    private long blockDifficulty;
+    private long blockNumber;
+    private long blockTimestamp;
+    private long blockNrgLimit;
+    private Address blockCoinbase;
+
     public TransactionalKernel(KernelInterface parent) {
         this.parent = parent;
         this.writeCache = new CachingKernel();
         this.writeLog = new ArrayList<>();
         this.deletedAccountProjection = new HashSet<>();
         this.cachedAccountBalances = new HashSet<>();
-    }
-
-    @Override
-    public byte[] getObjectGraph(Address a) {
-        return new byte[0x00];
-    }
-
-    @Override
-    public void putObjectGraph(Address a, byte[] data) {
-
-    }
-
-    @Override
-    public Set<byte[]> getTouchedAccounts() {
-        Set<byte[]> accounts = new HashSet<>();
-        for (ByteArrayWrapper item: this.cachedAccountBalances) {
-            accounts.add(item.getData());
-        }
-
-        return accounts;
+        this.blockDifficulty = parent.getBlockDifficulty();
+        this.blockNumber = parent.getBlockNumber();
+        this.blockTimestamp = parent.getBlockTimestamp();
+        this.blockNrgLimit = parent.getBlockEnergyLimit();
+        this.blockCoinbase = parent.getMinerAddress();
     }
 
     @Override
@@ -105,6 +97,18 @@ public class TransactionalKernel implements KernelInterface {
     }
 
     @Override
+    public byte[] getCode(Address address) {
+        byte[] result = null;
+        if (!this.deletedAccountProjection.contains(new ByteArrayWrapper(address.toBytes()))) {
+            result = this.writeCache.getCode(address);
+            if (null == result) {
+                result = this.parent.getCode(address);
+            }
+        }
+        return result;
+    }
+
+    @Override
     public void putCode(Address address, byte[] code) {
         Consumer<KernelInterface> write = (kernel) -> {
             kernel.putCode(address, code);
@@ -114,13 +118,40 @@ public class TransactionalKernel implements KernelInterface {
     }
 
     @Override
-    public byte[] getCode(Address address) {
+    public byte[] getTransformedCode(Address address) {
         byte[] result = null;
         if (!this.deletedAccountProjection.contains(new ByteArrayWrapper(address.toBytes()))) {
-            result = this.writeCache.getCode(address);
+            result = this.writeCache.getTransformedCode(address);
             if (null == result) {
-                result = this.parent.getCode(address);
+                result = this.parent.getTransformedCode(address);
             }
+        }
+        return result;
+    }
+
+    @Override
+    public void setTransformedCode(Address address, byte[] bytes) {
+        Consumer<KernelInterface> write = (kernel) -> {
+            kernel.setTransformedCode(address, bytes);
+        };
+        write.accept(writeCache);
+        writeLog.add(write);
+    }
+
+    @Override
+    public void putObjectGraph(Address address, byte[] bytes) {
+        Consumer<KernelInterface> write = (kernel) -> {
+            kernel.putObjectGraph(address, bytes);
+        };
+        write.accept(writeCache);
+        writeLog.add(write);
+    }
+
+    @Override
+    public byte[] getObjectGraph(Address address) {
+        byte[] result = this.writeCache.getObjectGraph(address);
+        if (null == result) {
+            result = this.parent.getObjectGraph(address);
         }
         return result;
     }
@@ -188,7 +219,6 @@ public class TransactionalKernel implements KernelInterface {
         Consumer<KernelInterface> write = (kernel) -> {
             kernel.adjustBalance(address, delta);
         };
-        System.out.println("transaction kernel adjust balance");
         write.accept(writeCache);
         writeLog.add(write);
     }
@@ -267,13 +297,42 @@ public class TransactionalKernel implements KernelInterface {
 
     @Override
     public void removeStorage(Address address, byte[] key) {
-        throw new AssertionError("This class does not implement this method.");
+        Consumer<KernelInterface> write = (kernel) -> {
+            kernel.removeStorage(address, key);
+        };
+        write.accept(writeCache);
+        writeLog.add(write);
     }
 
     @Override
     public boolean destinationAddressIsSafeForThisVM(Address address) {
         // We need to delegate to our parent kernel to apply whatever logic is defined there.
         // The only exception to this is cases where we already stored code in our cache so see if that is there.
-        return (null != this.writeCache.getCode(address)) || this.parent.destinationAddressIsSafeForThisVM(address);
+        return (null != this.writeCache.getTransformedCode(address)) || this.parent.destinationAddressIsSafeForThisVM(address);
+    }
+
+    @Override
+    public long getBlockNumber() {
+        return blockNumber;
+    }
+
+    @Override
+    public long getBlockTimestamp() {
+        return blockTimestamp;
+    }
+
+    @Override
+    public long getBlockEnergyLimit() {
+        return blockNrgLimit;
+    }
+
+    @Override
+    public long getBlockDifficulty() {
+        return blockDifficulty;
+    }
+
+    @Override
+    public Address getMinerAddress() {
+        return blockCoinbase;
     }
 }
