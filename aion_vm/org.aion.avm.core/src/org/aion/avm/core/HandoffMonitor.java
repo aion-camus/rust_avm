@@ -88,12 +88,12 @@ public class HandoffMonitor {
         
         // Consume the result and return it.
         AvmTransactionResult result = this.outgoingResults[index];
-        result.getSideEffects().merge(incomingTransactionTasks[index].getSideEffects());
+        result.getSideEffects().merge(incomingTransactionTasks[index].popSideEffects());
+        RuntimeAssertionError.assertTrue(incomingTransactionTasks[index].isSideEffectsStackEmpty());
         this.incomingTransactionTasks[index] = null;
         this.outgoingResults[index] = null;
         // If this is the last one in the list, drop it.
-        // TODO:  Remove this once we have a more sophisticated handoff mechanism (probably within the parallel executor - we currently
-        // know that we execute the list in-order).
+        // (note that this assumes the the results are consumed in-order - this requirement exists in more fundamental parts of the system, though).
         if ((index + 1) == this.outgoingResults.length) {
             this.incomingTransactionTasks = null;
             this.outgoingResults = null;

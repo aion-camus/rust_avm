@@ -197,7 +197,7 @@ public class Message implements TransactionInterface {
 
     @Override
     public boolean isContractCreationTransaction() {
-        return this.address == null;
+        return toAvmType(this.type) == Type.CREATE;
     }
 
     @Override

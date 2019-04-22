@@ -7,6 +7,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.Arrays;
 import org.aion.avm.core.dappreading.JarBuilder;
 import org.aion.avm.core.util.Helpers;
@@ -30,6 +32,7 @@ import java.util.jar.Manifest;
 
 import org.aion.avm.userlib.abi.ABIEncoder;
 import org.aion.avm.userlib.abi.ABIDecoder;
+import org.objectweb.asm.Type;
 
 public class ABICompiler {
 
@@ -42,6 +45,7 @@ public class ABICompiler {
     private byte[] mainClassBytes;
     private byte[] outputJarFile;
     private List<String> callables = new ArrayList<>();
+    private List<Type> initializables = new ArrayList<>();
     private Map<String, byte[]> classMap = new HashMap<>();
 
     public static void main(String[] args) {
@@ -63,11 +67,7 @@ public class ABICompiler {
 
         compiler.compile(fileInputStream);
 
-        System.out.println(VERSION_NUMBER);
-        System.out.println(compiler.mainClassName);
-        for (String s : compiler.callables) {
-            System.out.println(s);
-        }
+        compiler.writeAbi(System.out);
 
         try {
             DataOutputStream dout =
@@ -83,11 +83,26 @@ public class ABICompiler {
         System.out.println("Usage: ABICompiler <DApp jar path>");
     }
 
-    public void compile(byte[] jarBytes) {
-        compile(new ByteArrayInputStream(jarBytes));
+    public static ABICompiler compileJar(InputStream byteReader) {
+        ABICompiler compiler = new ABICompiler();
+        compiler.compile(byteReader);
+        return compiler;
     }
 
-    public void compile(InputStream byteReader) {
+    public static ABICompiler compileJarBytes(byte[] rawBytes) {
+        ABICompiler compiler = new ABICompiler();
+        compiler.compile(new ByteArrayInputStream(rawBytes));
+        return compiler;
+    }
+
+    /**
+     * We only want to expose the ABICompiler object once it is fully populated (_has_ compiled something) so we hide the constructor.
+     * This can only be meaningfully called by our factory methods.
+     */
+    private ABICompiler() {
+    }
+
+    private void compile(InputStream byteReader) {
         try {
             safeLoadFromBytes(byteReader);
         } catch (Exception e) {
@@ -95,11 +110,12 @@ public class ABICompiler {
         }
 
         ClassReader reader = new ClassReader(mainClassBytes);
-        ClassWriter classWriter = new ClassWriter(0);
+        ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         ABICompilerClassVisitor classVisitor = new ABICompilerClassVisitor(classWriter) {};
         reader.accept(classVisitor, 0);
 
         callables = classVisitor.getCallableSignatures();
+        initializables = classVisitor.getInitializableTypes();
         mainClassBytes = classWriter.toByteArray();
 
         if(classVisitor.addedMainMethod()) {
@@ -116,6 +132,21 @@ public class ABICompiler {
 //        } catch (Exception e) {
 //            e.printStackTrace();
 //        }
+    }
+
+    public void writeAbi(OutputStream rawStream) {
+        // We want this to know about new lines so use a PrintStream.
+        PrintStream abiStream = new PrintStream(rawStream);
+        abiStream.println(VERSION_NUMBER);
+        abiStream.println(this.mainClassName);
+        abiStream.print("Clinit: ");
+        for (Type t: this.initializables) {
+            abiStream.print(ABIUtils.shortenClassName(t.getClassName()) + " ");
+        }
+        abiStream.println();
+        for (String s : this.callables) {
+            abiStream.println(s);
+        }
     }
 
     private void safeLoadFromBytes(InputStream byteReader) throws Exception {

@@ -1,13 +1,15 @@
 package org.aion.parallel;
 
 import avm.Address;
+import java.util.Stack;
+
+import org.aion.avm.core.AvmTransaction;
 import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.util.Helpers;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.RuntimeAssertionError;
 import org.aion.kernel.*;
 import org.aion.vm.api.interfaces.KernelInterface;
-import org.aion.vm.api.interfaces.TransactionInterface;
 
 
 /**
@@ -16,18 +18,18 @@ import org.aion.vm.api.interfaces.TransactionInterface;
  */
 public class TransactionTask implements Comparable<TransactionTask>{
     private final KernelInterface parentKernel;
-    private TransactionInterface externalTransaction;
+    private AvmTransaction externalTransaction;
     private volatile boolean abortState;
     private IInstrumentation threadOwningTask;
     private ReentrantDAppStack reentrantDAppStack;
     private int index;
     private StringBuffer outBuffer;
     private TransactionalKernel thisTransactionKernel;
-    private SideEffects sideEffects;
+    private Stack<SideEffects> sideEffectsStack;
     private Address origin;
     private int depth;
 
-    public TransactionTask(KernelInterface parentKernel, TransactionInterface tx, int index, org.aion.types.Address origin){
+    public TransactionTask(KernelInterface parentKernel, AvmTransaction tx, int index, org.aion.types.Address origin){
         this.parentKernel = parentKernel;
         this.externalTransaction = tx;
         this.index = index;
@@ -37,7 +39,8 @@ public class TransactionTask implements Comparable<TransactionTask>{
         this.outBuffer = new StringBuffer();
         this.origin = new Address(origin.toBytes());
         this.depth = 0;
-        this.sideEffects = new SideEffects();
+        this.sideEffectsStack = new Stack<>();
+        this.sideEffectsStack.push(new SideEffects());
     }
 
     public void startNewTransaction() {
@@ -58,7 +61,6 @@ public class TransactionTask implements Comparable<TransactionTask>{
         RuntimeAssertionError.assertTrue(null == this.threadOwningTask);
         this.threadOwningTask = IInstrumentation.attachedThreadInstrumentation.get();
         RuntimeAssertionError.assertTrue(null != this.threadOwningTask);
-        //TODO: potential broken state
         if (this.abortState){
             threadOwningTask.setAbortState();
         }
@@ -75,7 +77,6 @@ public class TransactionTask implements Comparable<TransactionTask>{
      */
     public void setAbortState() {
         this.abortState = true;
-        //TODO: potential broken state
         if (null != this.threadOwningTask){
             this.threadOwningTask.setAbortState();
         }
@@ -113,7 +114,7 @@ public class TransactionTask implements Comparable<TransactionTask>{
      *
      * @return The entry (external) transaction of the task.
      */
-    public TransactionInterface getExternalTransaction() {
+    public AvmTransaction getTransaction() {
         return externalTransaction;
     }
 
@@ -134,8 +135,20 @@ public class TransactionTask implements Comparable<TransactionTask>{
         this.outBuffer.append(toPrint + "\n");
     }
 
-    public SideEffects getSideEffects() {
-        return sideEffects;
+    public void pushSideEffects(SideEffects se) {
+        sideEffectsStack.push(se);
+    }
+
+    public SideEffects popSideEffects() {
+        return sideEffectsStack.pop();
+    }
+
+    public SideEffects peekSideEffects() {
+        return sideEffectsStack.peek();
+    }
+
+    public boolean isSideEffectsStackEmpty() {
+        return sideEffectsStack.empty();
     }
 
     public Address getOriginAddress() {
@@ -156,7 +169,7 @@ public class TransactionTask implements Comparable<TransactionTask>{
 
     void outputFlush(){
         if (this.outBuffer.length() > 0) {
-            System.out.println("Output from transaction " + Helpers.bytesToHexString(externalTransaction.getTransactionHash()));
+            System.out.println("Output from transaction " + Helpers.bytesToHexString(externalTransaction.transactionHash));
             System.out.println(this.outBuffer);
             System.out.flush();
         }

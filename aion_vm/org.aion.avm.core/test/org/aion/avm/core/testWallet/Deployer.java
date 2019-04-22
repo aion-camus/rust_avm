@@ -1,7 +1,7 @@
 package org.aion.avm.core.testWallet;
 
-import java.util.IdentityHashMap;
 import avm.Address;
+import java.util.Set;
 import org.aion.avm.core.ClassHierarchyForest;
 import org.aion.avm.core.ClassToolchain;
 import org.aion.avm.core.DAppCreator;
@@ -14,6 +14,10 @@ import org.aion.avm.core.dappreading.JarBuilder;
 import org.aion.avm.core.dappreading.LoadedJar;
 import org.aion.avm.core.miscvisitors.ClassRenameVisitor;
 import org.aion.avm.core.miscvisitors.SingleLoader;
+import org.aion.avm.core.types.ClassInformation;
+import org.aion.avm.core.types.ClassHierarchy;
+import org.aion.avm.core.types.ClassInformationFactory;
+import org.aion.avm.core.types.ClassHierarchyBuilder;
 import org.aion.avm.core.util.BlockchainRuntime;
 import org.aion.avm.core.util.Helpers;
 import org.aion.avm.core.util.TestingHelper;
@@ -49,6 +53,8 @@ public class Deployer {
     };
 
     static Map<String, Integer> eventCounts = new HashMap<>();
+
+    private static boolean preserveDebuggability = false;
 
     public static void main(String[] args) throws Throwable {
         // This is eventually just a test harness to invoke the decode() but, for now, it will actually invoke the calls, directly.
@@ -225,7 +231,10 @@ public class Deployer {
         );
         LoadedJar jar = LoadedJar.fromBytes(jarBytes);
 
-        Map<String, byte[]> transformedClasses = Helpers.mapIncludingHelperBytecode(DAppCreator.transformClasses(jar.classBytesByQualifiedNames, ClassHierarchyForest.createForestFrom(jar), false), Helpers.loadDefaultHelperBytecode());
+        ClassHierarchy classHierarchy = buildNewHierarchy(jar);
+
+        Map<String, byte[]> transformedClasses = Helpers.mapIncludingHelperBytecode(DAppCreator.transformClasses(jar.classBytesByQualifiedNames, ClassHierarchyForest.createForestFrom(jar), classHierarchy,
+            preserveDebuggability), Helpers.loadDefaultHelperBytecode());
 
         AvmClassLoader loader = NodeEnvironment.singleton.createInvocationClassLoader(transformedClasses);
 
@@ -242,7 +251,7 @@ public class Deployer {
         // The idea is that we can reload a fresh Wallet class from a new AvmClassLoader for each invocation into the DApp in order to simulate
         // the DApp state at the point where it receives a call.
         // (currently, we just return the same walletClass instance since our persistence design is still being prototyped).
-        Class<?> walletClass = loader.loadUserClassByOriginalName(Wallet.class.getName(), false);
+        Class<?> walletClass = loader.loadUserClassByOriginalName(Wallet.class.getName(), preserveDebuggability);
         Supplier<Class<?>> classProvider = () -> {
             return walletClass;
         };
@@ -340,6 +349,18 @@ public class Deployer {
         
         InstrumentationHelpers.popExistingStackFrame(runtimeSetup);
         InstrumentationHelpers.detachThread(instrumentation);
+    }
+
+    private static ClassHierarchy buildNewHierarchy(LoadedJar jar) {
+        ClassInformationFactory classInfoFactory = new ClassInformationFactory();
+        Set<ClassInformation> classInfos = classInfoFactory.fromUserDefinedPreRenameJar(jar, preserveDebuggability);
+
+        return new ClassHierarchyBuilder()
+            .addShadowJcl()
+            .addPreRenameUserDefinedClasses(classInfos, preserveDebuggability)
+            .addHandwrittenArrayWrappers()
+            .addPostRenameJclExceptions()
+            .build();
     }
 
     private static Address buildAddress(int fillByte) {

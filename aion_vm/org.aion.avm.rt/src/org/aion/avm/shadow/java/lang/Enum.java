@@ -1,10 +1,12 @@
 package org.aion.avm.shadow.java.lang;
 
+import org.aion.avm.internal.ConstantToken;
 import org.aion.avm.internal.IInstrumentation;
 import org.aion.avm.internal.IObject;
 import org.aion.avm.RuntimeMethodFeeSchedule;
+import org.aion.avm.shadow.java.io.Serializable;
 
-public abstract class Enum<E extends Enum<E>> extends Object {
+public abstract class Enum<E extends Enum<E>> extends Object implements Serializable {
     static {
         // Shadow classes MUST be loaded during bootstrap phase.
         IInstrumentation.attachedThreadInstrumentation.get().bootstrapOnly();
@@ -27,6 +29,12 @@ public abstract class Enum<E extends Enum<E>> extends Object {
 
     protected Enum(String name, int ordinal) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Enum_avm_constructor);
+        this.name = name;
+        this.ordinal = ordinal;
+    }
+
+    protected Enum(String name, int ordinal, ConstantToken constantToken) {
+        super(constantToken);
         this.name = name;
         this.ordinal = ordinal;
     }

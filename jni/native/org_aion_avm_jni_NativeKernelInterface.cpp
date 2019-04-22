@@ -239,6 +239,10 @@ JNIEXPORT jbyteArray JNICALL Java_org_aion_avm_jni_NativeKernelInterface_getBala
 {
     struct avm_address a = load_address(env, address);
 
+    for (int i = 0; i < 32; i++) {
+      printf("%02x", a.bytes[i]);
+    }
+    printf("\n");
     struct avm_value v = callbacks.get_balance((void *)handle, &a);
 
     return to_jbyteArray(env, v.bytes, VALUE_LENGTH);

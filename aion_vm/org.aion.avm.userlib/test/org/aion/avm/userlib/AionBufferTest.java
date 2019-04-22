@@ -17,10 +17,10 @@ import org.junit.Test;
 public class AionBufferTest {
     private static final int RANGE_1BYTE = BigInteger.TWO.pow(8).intValue();
     private static final int RANGE_2BYTES = BigInteger.TWO.pow(16).intValue();
-    private static final int INT_SLICE = BigInteger.TWO.pow(20).intValue();
-    private static final int LONG_SLICE = BigInteger.TWO.pow(22).intValue();
-    private static final int FLOAT_SLICE = BigInteger.TWO.pow(20).intValue();
-    private static final int DOUBLE_SLICE = BigInteger.TWO.pow(22).intValue();
+    private static final int INT_SLICE = BigInteger.TWO.pow(18).intValue();
+    private static final int LONG_SLICE = BigInteger.TWO.pow(16).intValue();
+    private static final int FLOAT_SLICE = BigInteger.TWO.pow(18).intValue();
+    private static final int DOUBLE_SLICE = BigInteger.TWO.pow(16).intValue();
     private static Random random;
 
     @Before
@@ -90,6 +90,22 @@ public class AionBufferTest {
         AionBuffer buffer = fill(AionBuffer.allocate(25_000));
         assertEquals(buffer.getLimit(), buffer.getPosition());
         assertEquals(buffer.getCapacity(), buffer.getPosition());
+    }
+
+    /**
+     * Tests that booleans can be put into a buffer and retrieved back from it.
+     */
+    @Test
+    public void testPutAndGetBooleans() {
+        AionBuffer buffer = AionBuffer.allocate(RANGE_1BYTE);
+        boolean[] bools = new boolean[] {true, false};
+        for (boolean bool : bools) {
+            buffer.putBoolean(bool);
+        }
+        buffer.flip();
+        for (boolean bool : bools) {
+            assertEquals(bool, buffer.getBoolean());
+        }
     }
 
     /**

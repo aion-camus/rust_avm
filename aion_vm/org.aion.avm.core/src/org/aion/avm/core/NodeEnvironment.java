@@ -4,8 +4,12 @@ import org.aion.avm.core.classgeneration.CommonGenerators;
 import org.aion.avm.core.classloading.AvmClassLoader;
 import org.aion.avm.core.classloading.AvmSharedClassLoader;
 import org.aion.avm.core.dappreading.LoadedJar;
+import org.aion.avm.core.types.ClassHierarchy;
 import org.aion.avm.core.types.ClassInfo;
 import org.aion.avm.core.types.Forest;
+import org.aion.avm.core.types.ClassInformation;
+import org.aion.avm.core.types.ClassInformationFactory;
+import org.aion.avm.core.types.ClassHierarchyBuilder;
 import org.aion.avm.core.util.Helpers;
 import org.aion.avm.internal.*;
 
@@ -44,6 +48,9 @@ public class NodeEnvironment {
     public final Map<String, Integer> apiObjectSizeMap;     // post-rename; API objects
     public final Map<String, Integer> preRenameRuntimeObjectSizeMap;     // pre-rename; runtime objects including shadow objects, exceptions and API objects
     public final Map<String, Integer> postRenameRuntimeObjectSizeMap;    // post-rename; runtime objects including shadow objects, exceptions and API objects
+
+    // The full class hierarchy; we only ever give away deep copies of this object!
+    private ClassHierarchy classHierarchy;
 
     private NodeEnvironment() {
         Map<String, byte[]> generatedShadowJDK = CommonGenerators.generateShadowJDK();
@@ -103,6 +110,8 @@ public class NodeEnvironment {
                     , org.aion.avm.shadow.java.lang.System.class
                     , org.aion.avm.shadow.java.lang.Throwable.class
                     , org.aion.avm.shadow.java.lang.TypeNotPresentException.class
+                    , org.aion.avm.shadow.java.lang.Appendable.class
+                    , org.aion.avm.shadow.java.lang.Cloneable.class
 
                     , org.aion.avm.shadow.java.lang.invoke.LambdaMetafactory.class
                     , org.aion.avm.shadow.java.lang.invoke.StringConcatFactory.class
@@ -126,6 +135,8 @@ public class NodeEnvironment {
                     , org.aion.avm.shadow.java.util.function.Function.class
 
                     , org.aion.avm.shadow.java.util.concurrent.TimeUnit.class
+                
+                    , org.aion.avm.shadow.java.io.Serializable.class
             };
 
             this.jclClassNames = new HashSet<>();
@@ -162,7 +173,8 @@ public class NodeEnvironment {
         }
 
         // Create the constant map.
-        this.constantMap = Collections.unmodifiableMap(initializeConstantState());
+        this.constantMap = Collections.unmodifiableMap(ConstantsHolder.getConstants());
+        RuntimeAssertionError.assertTrue(this.constantMap.size() == 34);
 
         // create the object size look-up maps
         Map<String, Integer> rtObjectSizeMap = computeRuntimeObjectSizes(generatedShadowJDK);
@@ -365,61 +377,13 @@ public class NodeEnvironment {
         return classNames;
     }
 
-    private Map<Integer, org.aion.avm.shadow.java.lang.Object> initializeConstantState() {
-        Map<Integer, org.aion.avm.shadow.java.lang.Object> constantMap = new HashMap<>();
-
-        // Note that these constants are defined, in the specification, to have these identity hash codes (all but RoundingMode override this but it matters for the persistence hash).
-        // NOTE:  This list needs to be manually updated and we specify it as a list since these values CANNOT change, once assigned (these represent the serialized symbolic references from contracts).
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.lang.Boolean.avm_TRUE, 1);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.lang.Boolean.avm_FALSE, 2);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.MathContext.avm_UNLIMITED, 3);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.MathContext.avm_DECIMAL32, 4);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.MathContext.avm_DECIMAL64, 5);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.MathContext.avm_DECIMAL128, 6);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.RoundingMode.avm_UP, 7);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.RoundingMode.avm_DOWN, 8);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.RoundingMode.avm_CEILING, 9);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.RoundingMode.avm_FLOOR, 10);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.RoundingMode.avm_HALF_UP, 11);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.RoundingMode.avm_HALF_DOWN, 12);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.RoundingMode.avm_HALF_EVEN, 13);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.RoundingMode.avm_UNNECESSARY, 14);
-
-        // Note that (as explained in issue-146), we need to treat our primitive "TYPE" pseudo-classes as constants, not like normal Class references.
-        installConstantClass(constantMap, org.aion.avm.shadow.java.lang.Boolean.avm_TYPE, 15);
-        installConstantClass(constantMap, org.aion.avm.shadow.java.lang.Byte.avm_TYPE, 16);
-        installConstantClass(constantMap, org.aion.avm.shadow.java.lang.Character.avm_TYPE, 17);
-        installConstantClass(constantMap, org.aion.avm.shadow.java.lang.Double.avm_TYPE, 18);
-        installConstantClass(constantMap, org.aion.avm.shadow.java.lang.Float.avm_TYPE, 19);
-        installConstantClass(constantMap, org.aion.avm.shadow.java.lang.Integer.avm_TYPE, 20);
-        installConstantClass(constantMap, org.aion.avm.shadow.java.lang.Long.avm_TYPE, 21);
-        installConstantClass(constantMap, org.aion.avm.shadow.java.lang.Short.avm_TYPE, 22);
-        installConstantClass(constantMap, org.aion.avm.shadow.java.lang.Void.avm_TYPE, 23);
-
-
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.BigInteger.avm_ZERO, 24);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.BigInteger.avm_ONE, 25);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.BigInteger.avm_TWO, 26);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.math.BigInteger.avm_TEN, 27);
-
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.util.concurrent.TimeUnit.avm_DAYS, 28);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.util.concurrent.TimeUnit.avm_HOURS, 29);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.util.concurrent.TimeUnit.avm_MINUTES, 30);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.util.concurrent.TimeUnit.avm_SECONDS, 31);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.util.concurrent.TimeUnit.avm_MILLISECONDS, 32);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.util.concurrent.TimeUnit.avm_MICROSECONDS, 33);
-        setConstantInstanceId(constantMap, org.aion.avm.shadow.java.util.concurrent.TimeUnit.avm_NANOSECONDS, 34);
-
-        return constantMap;
-    }
-
-    private void setConstantInstanceId(Map<Integer, org.aion.avm.shadow.java.lang.Object> constantMap, org.aion.avm.shadow.java.lang.Object object, int identityHashCode) {
-        object.updateHashCodeForConstant(identityHashCode);
-        constantMap.put(identityHashCode, object);
-    }
-
-    private void installConstantClass(Map<Integer, org.aion.avm.shadow.java.lang.Object> constantMap, org.aion.avm.shadow.java.lang.Class instance, int constantId) {
-        constantMap.put(constantId, instance);
+    /**
+     * Returns a deep copy of a class hierarchy that already is populated with all of the shadow
+     * JCL and API classes.
+     */
+    public ClassHierarchy deepCopyOfClassHierarchy() {
+        RuntimeAssertionError.assertTrue(this.classHierarchy != null);
+        return this.classHierarchy.deepCopy();
     }
 
     /**
@@ -452,6 +416,15 @@ public class NodeEnvironment {
         ClassHierarchyForest rtClassesForest = null;
         try {
             rtClassesForest = ClassHierarchyForest.createForestFrom(runtimeJar);
+
+            // Construct the full class hierarchy.
+            ClassInformationFactory classInfoFactory = new ClassInformationFactory();
+            Set<ClassInformation> classInfos = classInfoFactory.fromPostRenameJar(runtimeJar);
+
+            this.classHierarchy = new ClassHierarchyBuilder()
+                .addPostRenameNonUserDefinedClasses(classInfos)
+                .build();
+
         } catch (IOException e) {
             // If the RT jar being something we can't process, our installation is clearly corrupt.
             throw RuntimeAssertionError.unexpected(e);
@@ -473,7 +446,6 @@ public class NodeEnvironment {
                 } else {
                     parentClass = generatedShadowJDK.get(parentName);
                 }
-                // TODO: figure out the name of the grandparent class
                 rtClassesForest.add(new Forest.Node<>(parentName, new ClassInfo(false, parentClass)),
                         new Forest.Node<>(generatedClassName, new ClassInfo(false, generatedShadowJDK.get(generatedClassName))));
             }

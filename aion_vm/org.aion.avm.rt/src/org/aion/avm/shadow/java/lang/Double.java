@@ -1,12 +1,10 @@
 package org.aion.avm.shadow.java.lang;
 
-import org.aion.avm.internal.IInstrumentation;
-import org.aion.avm.internal.IObject;
-import org.aion.avm.internal.RuntimeAssertionError;
+import org.aion.avm.internal.*;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
 
-public class Double extends Number implements Comparable<Double>{
+public final class Double extends Number implements Comparable<Double>{
     static {
         // Shadow classes MUST be loaded during bootstrap phase.
         IInstrumentation.attachedThreadInstrumentation.get().bootstrapOnly();
@@ -42,7 +40,7 @@ public class Double extends Number implements Comparable<Double>{
 
     public static final int avm_SIZE = java.lang.Double.SIZE;
 
-    public static final Class avm_TYPE = new Class(java.lang.Double.TYPE);
+    public static final Class avm_TYPE = new Class(java.lang.Double.TYPE, new ConstantToken(ShadowClassConstantId.Double_avm_TYPE));
 
     public static String avm_toHexString(double a)
     {

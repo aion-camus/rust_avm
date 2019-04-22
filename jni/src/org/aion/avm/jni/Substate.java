@@ -25,7 +25,7 @@ public class Substate implements KernelInterface {
     /// block info (act as env info)
     private EnvInfo info;
 
-    private boolean debug = true;
+    static boolean debug = true;
 
     private class EnvInfo {
         private Address coinbase;
@@ -120,11 +120,19 @@ public class Substate implements KernelInterface {
 
     @Override
     public boolean accountNonceEquals(Address address, BigInteger nonce) {
+        if (debug) {
+            System.out.print("current Nonce = ");
+            System.out.println(getNonce(address));
+        }
+        
         return getNonce(address).compareTo(nonce) == 0;
     }
 
     @Override
     public BigInteger getBalance(Address address) {
+        if (debug) {
+            System.out.println("avm substate: getBalance");
+        }
         BigInteger balance = this.balances.get(address);
         if (null == balance) {
             balance = this.parent.getBalance(address);
@@ -135,6 +143,9 @@ public class Substate implements KernelInterface {
 
     @Override
     public void adjustBalance(Address address, BigInteger delta) {
+        if (debug) {
+            System.out.printf("try adjust balance: %d\n", delta.longValue());
+        }
         Consumer<KernelInterface> write = (kernel) -> {
             kernel.adjustBalance(address, delta);
         };
@@ -145,6 +156,7 @@ public class Substate implements KernelInterface {
 
     @Override
     public BigInteger getNonce(Address address) {
+        System.out.print("try getNonce of: ");
         System.out.println(address);
         BigInteger nonce = this.nonces.get(address);
         if (nonce == null) {
@@ -252,7 +264,6 @@ public class Substate implements KernelInterface {
 
     @Override
     public void commit() {
-        System.out.println("start commit to NativeKernel");
         for (Consumer<KernelInterface> mutation : this.writeLog) {
             mutation.accept(this.parent);
         }
@@ -261,6 +272,7 @@ public class Substate implements KernelInterface {
     // Camus: this should not be in kernel interface
     @Override
     public Address getMinerAddress() {
+        System.out.printf("Try to get miner address\n");
         return this.info.coinbase;
     }
 

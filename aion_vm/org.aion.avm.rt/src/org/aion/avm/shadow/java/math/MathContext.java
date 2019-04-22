@@ -1,31 +1,29 @@
 package org.aion.avm.shadow.java.math;
 
-import org.aion.avm.internal.IInstrumentation;
-import org.aion.avm.internal.IObject;
-import org.aion.avm.internal.IObjectDeserializer;
-import org.aion.avm.internal.IObjectSerializer;
+import org.aion.avm.internal.*;
+import org.aion.avm.shadow.java.io.Serializable;
 import org.aion.avm.shadow.java.lang.Object;
 import org.aion.avm.shadow.java.lang.String;
 
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
-public final class MathContext extends Object {
+public final class MathContext extends Object implements Serializable {
     static {
         // Shadow classes MUST be loaded during bootstrap phase.
         IInstrumentation.attachedThreadInstrumentation.get().bootstrapOnly();
     }
 
     public static final MathContext avm_UNLIMITED =
-            new MathContext(0, RoundingMode.avm_HALF_UP);
+            new MathContext(0, RoundingMode.avm_HALF_UP, new ConstantToken(ShadowClassConstantId.MathContext_avm_UNLIMITED));
 
     public static final MathContext avm_DECIMAL32 =
-            new MathContext(7, RoundingMode.avm_HALF_EVEN);
+            new MathContext(7, RoundingMode.avm_HALF_EVEN, new ConstantToken(ShadowClassConstantId.MathContext_avm_DECIMAL32));
 
     public static final MathContext avm_DECIMAL64 =
-            new MathContext(16, RoundingMode.avm_HALF_EVEN);
+            new MathContext(16, RoundingMode.avm_HALF_EVEN, new ConstantToken(ShadowClassConstantId.MathContext_avm_DECIMAL64));
 
     public static final MathContext avm_DECIMAL128 =
-            new MathContext(34, RoundingMode.avm_HALF_EVEN);
+            new MathContext(34, RoundingMode.avm_HALF_EVEN, new ConstantToken(ShadowClassConstantId.MathContext_avm_DECIMAL128));
 
     public MathContext(int setPrecision) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.MathContext_avm_constructor);
@@ -41,6 +39,11 @@ public final class MathContext extends Object {
     public MathContext(String val) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.MathContext_avm_constructor_2);
         v = new java.math.MathContext(val.getUnderlying());
+    }
+
+    private MathContext(int setPrecision, RoundingMode setRoundingMode, ConstantToken constantToken) {
+        super(constantToken);
+        v = new java.math.MathContext(setPrecision, setRoundingMode.getUnderlying());
     }
 
     public int avm_getPrecision() {

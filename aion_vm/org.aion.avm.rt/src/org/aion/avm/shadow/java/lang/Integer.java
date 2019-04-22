@@ -1,11 +1,9 @@
 package org.aion.avm.shadow.java.lang;
 
-import org.aion.avm.internal.IInstrumentation;
-import org.aion.avm.internal.IObject;
-import org.aion.avm.internal.RuntimeAssertionError;
+import org.aion.avm.internal.*;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
-public class Integer extends Number implements Comparable<Integer> {
+public final class Integer extends Number implements Comparable<Integer> {
     static {
         // Shadow classes MUST be loaded during bootstrap phase.
         IInstrumentation.attachedThreadInstrumentation.get().bootstrapOnly();
@@ -19,7 +17,7 @@ public class Integer extends Number implements Comparable<Integer> {
 
     public static final int avm_BYTES = java.lang.Integer.BYTES;
 
-    public static final Class<Integer> avm_TYPE = new Class(java.lang.Integer.TYPE);
+    public static final Class<Integer> avm_TYPE = new Class(java.lang.Integer.TYPE, new ConstantToken(ShadowClassConstantId.Integer_avm_TYPE));
 
     public static String avm_toString(int i, int radix) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Integer_avm_toString);

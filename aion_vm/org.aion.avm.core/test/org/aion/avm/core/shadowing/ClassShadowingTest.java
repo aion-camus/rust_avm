@@ -24,10 +24,12 @@ import java.util.function.Function;
 
 
 public class ClassShadowingTest {
+    private static boolean preserveDebuggability = false;
+
     @Test
     public void testNewObject() throws Exception {
-        SimpleAvm avm = new SimpleAvm(1_000_000L, false, TestObjectCreation.class);
-        Class<?> clazz = avm.getClassLoader().loadUserClassByOriginalName(TestObjectCreation.class.getName(), false);
+        SimpleAvm avm = new SimpleAvm(1_000_000L, preserveDebuggability, TestObjectCreation.class);
+        Class<?> clazz = avm.getClassLoader().loadUserClassByOriginalName(TestObjectCreation.class.getName(), preserveDebuggability);
 
         Object ret = clazz.getMethod(NamespaceMapper.mapMethodName("accessObject")).invoke(null);
         Assert.assertEquals(Integer.valueOf(1), ret);
@@ -41,14 +43,18 @@ public class ClassShadowingTest {
 
         Function<byte[], byte[]> transformer = (inputBytes) ->
                 new ClassToolchain.Builder(inputBytes, ClassReader.SKIP_DEBUG)
-                        .addNextVisitor(new UserClassMappingVisitor(createTestingMapper(className), false))
+                        .addNextVisitor(new UserClassMappingVisitor(createTestingMapper(className), preserveDebuggability))
                         .addNextVisitor(new ConstantVisitor())
                         .addNextVisitor(new ClassShadowing(PackageConstants.kShadowSlashPrefix))
                         .addWriter(new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS))
                         .build()
                         .runAndGetBytecode();
         Map<String, byte[]> classes = new HashMap<>();
-        classes.put(PackageConstants.kUserDotPrefix + className, transformer.apply(bytecode));
+
+        String prefix = (preserveDebuggability) ? "" : PackageConstants.kUserDotPrefix;
+
+        classes.put(prefix + className, transformer.apply(bytecode));
+
         Map<String, byte[]> classesAndHelper = Helpers.mapIncludingHelperBytecode(classes, Helpers.loadDefaultHelperBytecode());
         AvmClassLoader loader = NodeEnvironment.singleton.createInvocationClassLoader(classesAndHelper);
 
@@ -56,7 +62,7 @@ public class ClassShadowingTest {
         InstrumentationHelpers.attachThread(instrumentation);
         IRuntimeSetup runtime = Helpers.getSetupForLoader(loader);
         InstrumentationHelpers.pushNewStackFrame(runtime, loader, 1_000_000L, 1, new InternedClasses());
-        Class<?> clazz = loader.loadUserClassByOriginalName(className, false);
+        Class<?> clazz = loader.loadUserClassByOriginalName(className, preserveDebuggability);
         Object obj = clazz.getConstructor().newInstance();
 
         Method method = clazz.getMethod(NamespaceMapper.mapMethodName("abs"), int.class);
@@ -84,12 +90,14 @@ public class ClassShadowingTest {
     @Test
     public void testField() throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         String className = TestResource2.class.getName();
-        String mappedClassName = PackageConstants.kUserDotPrefix + className;
+        String prefix = (preserveDebuggability) ? "" : PackageConstants.kUserDotPrefix;
+        String mappedClassName = prefix + className;
+
         byte[] bytecode = Helpers.loadRequiredResourceAsBytes(className.replaceAll("\\.", "/") + ".class");
 
         Function<byte[], byte[]> transformer = (inputBytes) ->
                 new ClassToolchain.Builder(inputBytes, 0) /* DO NOT SKIP ANYTHING */
-                        .addNextVisitor(new UserClassMappingVisitor(createTestingMapper(className), false))
+                        .addNextVisitor(new UserClassMappingVisitor(createTestingMapper(className), preserveDebuggability))
                         .addNextVisitor(new ConstantVisitor())
                         .addNextVisitor(new ClassShadowing(PackageConstants.kShadowSlashPrefix))
                         .addWriter(new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS))
@@ -128,7 +136,7 @@ public class ClassShadowingTest {
 
         Function<byte[], byte[]> transformer = (inputBytes) ->
                 new ClassToolchain.Builder(inputBytes, ClassReader.SKIP_DEBUG)
-                        .addNextVisitor(new UserClassMappingVisitor(createTestingMapper(className, innerClassName), false))
+                        .addNextVisitor(new UserClassMappingVisitor(createTestingMapper(className, innerClassName), preserveDebuggability))
                         .addNextVisitor(new ConstantVisitor())
                         .addNextVisitor(new ClassShadowing(PackageConstants.kShadowSlashPrefix))
                         .addWriter(new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS))
@@ -136,8 +144,11 @@ public class ClassShadowingTest {
                         .runAndGetBytecode();
         Map<String, byte[]> classes = new HashMap<>();
         byte[] transformed = transformer.apply(bytecode);
-        classes.put(PackageConstants.kUserDotPrefix + className, transformed);
-        classes.put(PackageConstants.kUserDotPrefix + innerClassName, transformer.apply(innerBytecode));
+
+        String prefix = (preserveDebuggability) ? "" : PackageConstants.kUserDotPrefix;
+
+        classes.put(prefix + className, transformed);
+        classes.put(prefix + innerClassName, transformer.apply(innerBytecode));
 
         Map<String, byte[]> classesAndHelper = Helpers.mapIncludingHelperBytecode(classes, Helpers.loadDefaultHelperBytecode());
         AvmClassLoader loader = NodeEnvironment.singleton.createInvocationClassLoader(classesAndHelper);
@@ -146,7 +157,7 @@ public class ClassShadowingTest {
         InstrumentationHelpers.attachThread(instrumentation);
         IRuntimeSetup runtime = Helpers.getSetupForLoader(loader);
         InstrumentationHelpers.pushNewStackFrame(runtime, loader, 1_000_000L, 1, new InternedClasses());
-        Class<?> clazz = loader.loadUserClassByOriginalName(className, false);
+        Class<?> clazz = loader.loadUserClassByOriginalName(className, preserveDebuggability);
 
         Method method = clazz.getMethod(NamespaceMapper.mapMethodName("getStringForNull"));
         Object ret = method.invoke(null);
@@ -159,9 +170,9 @@ public class ClassShadowingTest {
 
     @Test
     public void testEnumHandling() throws Exception {
-        SimpleAvm avm = new SimpleAvm(1000000L, false, TestResourceEnum.class);
+        SimpleAvm avm = new SimpleAvm(1000000L, preserveDebuggability, TestResourceEnum.class);
         AvmClassLoader loader = avm.getClassLoader();
-        Class<?> clazz = loader.loadUserClassByOriginalName(TestResourceEnum.class.getName(), false);
+        Class<?> clazz = loader.loadUserClassByOriginalName(TestResourceEnum.class.getName(), preserveDebuggability);
         
         // Try the normal constructor (private, so set accessible).
         Constructor<?> one = clazz.getDeclaredConstructor(org.aion.avm.shadow.java.lang.String.class, int.class, org.aion.avm.shadow.java.lang.String.class);
@@ -177,9 +188,9 @@ public class ClassShadowingTest {
 
     @Test
     public void testEnumHandling_internal() throws Exception {
-        SimpleAvm avm = new SimpleAvm(1000000L, false, TestContainer.class, TestContainer.InternalEnum.class);
+        SimpleAvm avm = new SimpleAvm(1000000L, preserveDebuggability, TestContainer.class, TestContainer.InternalEnum.class);
         AvmClassLoader loader = avm.getClassLoader();
-        Class<?> clazz = loader.loadUserClassByOriginalName(TestContainer.InternalEnum.class.getName(), false);
+        Class<?> clazz = loader.loadUserClassByOriginalName(TestContainer.InternalEnum.class.getName(), preserveDebuggability);
         
         // Try the normal constructor (private, so set accessible).
         Constructor<?> one = clazz.getDeclaredConstructor(org.aion.avm.shadow.java.lang.String.class, int.class, org.aion.avm.shadow.java.lang.String.class);
@@ -198,8 +209,8 @@ public class ClassShadowingTest {
      */
     @Test
     public void testShadowObjectEquality() throws Exception {
-        SimpleAvm avm = new SimpleAvm(1_000_000L, false, TestObjectCreation.class);
-        Class<?> clazz = avm.getClassLoader().loadUserClassByOriginalName(TestObjectCreation.class.getName(), false);
+        SimpleAvm avm = new SimpleAvm(1_000_000L, preserveDebuggability, TestObjectCreation.class);
+        Class<?> clazz = avm.getClassLoader().loadUserClassByOriginalName(TestObjectCreation.class.getName(), preserveDebuggability);
         Method createInstance = clazz.getMethod(NamespaceMapper.mapMethodName("createInstance"));
         Method isEqual = clazz.getMethod(NamespaceMapper.mapMethodName("isEqual"), org.aion.avm.internal.IObject.class, org.aion.avm.internal.IObject.class);
 
@@ -221,9 +232,8 @@ public class ClassShadowingTest {
         // which hasn't been renamed.
         // We believe that this is reasonable behaviour (as local debug requires disabling the renaming security feature) but it is why
         // debug should only ever be enabled, locally.
-        boolean preserveDebuggability = true;
         new ClassToolchain.Builder(inputBytes, 0)
-                .addNextVisitor(new UserClassMappingVisitor(createTestingMapper(className), preserveDebuggability))
+                .addNextVisitor(new UserClassMappingVisitor(createTestingMapper(className), true))
                 .addNextVisitor(new ConstantVisitor())
                 .addNextVisitor(new ClassShadowing(PackageConstants.kShadowSlashPrefix))
                 .addWriter(new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS))

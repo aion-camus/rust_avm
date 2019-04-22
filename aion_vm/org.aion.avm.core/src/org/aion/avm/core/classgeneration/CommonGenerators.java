@@ -1,22 +1,15 @@
 package org.aion.avm.core.classgeneration;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.aion.avm.core.ClassToolchain;
-import org.aion.avm.core.arraywrapping.ArrayWrappingClassAdapter;
-import org.aion.avm.core.arraywrapping.ArrayWrappingClassAdapterRef;
-import org.aion.avm.core.miscvisitors.NamespaceMapper;
-import org.aion.avm.core.miscvisitors.PreRenameClassAccessRules;
-import org.aion.avm.core.miscvisitors.UserClassMappingVisitor;
-import org.aion.avm.core.shadowing.ClassShadowing;
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.ClassNameExtractor;
+import org.aion.avm.core.types.CommonType;
 import org.aion.avm.internal.PackageConstants;
 import org.aion.avm.internal.RuntimeAssertionError;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
 
 
 /**
@@ -27,81 +20,38 @@ public class CommonGenerators {
     // so we will list the names of all the classes we need and assemble them that way.
     // We should at least be able to use the original Throwable's classloader to look up the subclasses (again, since they are in java.lang).
     // Note:  "java.lang.VirtualMachineError" and children are deliberately absent from this since user code can never see them.
-    public static final String[] kExceptionClassNames = new String[] {
-            "java.lang.Error",
-            "java.lang.AssertionError",
-            "java.lang.LinkageError",
-            "java.lang.BootstrapMethodError",
-            "java.lang.ClassCircularityError",
-            "java.lang.ClassFormatError",
-            "java.lang.UnsupportedClassVersionError",
-            "java.lang.ExceptionInInitializerError",
-            "java.lang.IncompatibleClassChangeError",
-            "java.lang.AbstractMethodError",
-            "java.lang.IllegalAccessError",
-            "java.lang.InstantiationError",
-            "java.lang.NoSuchFieldError",
-            "java.lang.NoSuchMethodError",
-            "java.lang.NoClassDefFoundError",
-            "java.lang.UnsatisfiedLinkError",
-            "java.lang.VerifyError",
-            "java.lang.ThreadDeath",
-            "java.lang.Exception",
-            "java.lang.CloneNotSupportedException",
-            "java.lang.InterruptedException",
-            "java.lang.ReflectiveOperationException",
-            "java.lang.ClassNotFoundException",
-            "java.lang.IllegalAccessException",
-            "java.lang.InstantiationException",
-            "java.lang.NoSuchFieldException",
-            "java.lang.NoSuchMethodException",
-            "java.lang.RuntimeException",
-            "java.lang.ArithmeticException",
-            "java.lang.ArrayStoreException",
-            "java.lang.ClassCastException",
-            "java.lang.EnumConstantNotPresentException",
-            "java.lang.IllegalArgumentException",
-            "java.lang.IllegalThreadStateException",
-            "java.lang.NumberFormatException",
-            "java.lang.IllegalCallerException",
-            "java.lang.IllegalMonitorStateException",
-            "java.lang.IllegalStateException",
-            "java.lang.IndexOutOfBoundsException",
-            "java.lang.ArrayIndexOutOfBoundsException",
-            "java.lang.StringIndexOutOfBoundsException",
-            "java.lang.LayerInstantiationException",
-            "java.lang.NegativeArraySizeException",
-            "java.lang.NullPointerException",
-            "java.lang.SecurityException",
-            "java.lang.TypeNotPresentException",
-            "java.lang.UnsupportedOperationException",
+    public static final String[] kExceptionClassNames = Arrays.stream(CommonType.values())
+        .filter((type) -> (type.isShadowException && !type.isVirtualMachineErrorOrChildError && !type.dotName.equals(CommonType.SHADOW_THROWABLE.dotName)))
+        .map((type) -> (ClassNameExtractor.getOriginalClassName(type.dotName)))
+        .toArray(String[]::new);
+    private static Set<String> allJclExceptions = null;
 
-            "java.util.NoSuchElementException",
-            "java.nio.BufferUnderflowException",
-            "java.nio.BufferOverflowException"
-    };
+    public static boolean isJclExceptionType(String className) {
+        if (allJclExceptions == null) {
+            Set<String> exceptions = new HashSet<>(Arrays.asList(CommonGenerators.kExceptionClassNames));
+            exceptions.addAll(CommonGenerators.kHandWrittenExceptionClassNames);
+            exceptions.addAll(CommonGenerators.kLegacyExceptionClassNames);
+            exceptions.add(CommonType.JAVA_LANG_THROWABLE.dotName);  // Missing from the other lists, but definitely an exception.
+            allJclExceptions = exceptions;
+        }
+        return allJclExceptions.contains(className);
+    }
 
     // We don't generate the shadows for these ones since we have hand-written them (but wrappers are still required).
     public static final Set<String> kHandWrittenExceptionClassNames = Set.of(new String[] {
-            "java.lang.Error",
-            "java.lang.AssertionError",
-            "java.lang.Exception",
-            "java.lang.RuntimeException",
-            "java.lang.EnumConstantNotPresentException",
-            "java.lang.TypeNotPresentException",
-
-            "java.util.NoSuchElementException",
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_ERROR.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_ASSERTION_ERROR.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_EXCEPTION.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_RUNTIME_EXCEPTION.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_ENUM_CONSTANT_EXCEPTION.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_NO_TYPE_PRESENT_EXCEPTION.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_NO_SUCH_ELEMENT_EXCEPTION.dotName),
     });
 
     // We generate "legacy-style exception" shadows for these ones (and wrappers are still required).
     public static final Set<String> kLegacyExceptionClassNames = Set.of(new String[] {
-            "java.lang.ExceptionInInitializerError",
-            "java.lang.ClassNotFoundException",
-    });
-
-    public static final Set<String> kShadowEnumClassNames = Set.of(new String[] {
-            PackageConstants.kShadowDotPrefix + "java.math.RoundingMode",
-            PackageConstants.kShadowDotPrefix + "java.util.concurrent.TimeUnit",
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_INITIALIZER_ERROR.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_CLASS_NOT_FOUND_EXCEPTION.dotName),
     });
 
     // Record the parent class of each generated class. This information is needed by the heap size calculation.
@@ -112,9 +62,7 @@ public class CommonGenerators {
         Map<String, byte[]> shadowJDK = new HashMap<>();
 
         Map<String, byte[]> shadowException = generateShadowException();
-        //Map<String, byte[]> shadowEnum = generateShadowEnum();
 
-        //shadowJDK.putAll(shadowEnum);
         shadowJDK.putAll(shadowException);
 
         return shadowJDK;
@@ -159,32 +107,6 @@ public class CommonGenerators {
             byte[] wrapperBytes = generateWrapperClass(wrapperName, wrapperSuperName);
             generatedClasses.put(wrapperName, wrapperBytes);
         }
-        return generatedClasses;
-    }
-
-    public static Map<String, byte[]> generateShadowEnum(boolean preserveDebuggability){
-        Map<String, byte[]> generatedClasses = new HashMap<>();
-
-        for (String name : kShadowEnumClassNames){
-            byte[] cnt = Helpers.loadRequiredResourceAsBytes(name.replaceAll("\\.", "/") + ".class");
-
-            PreRenameClassAccessRules emptyUserRuleRuleSet = new PreRenameClassAccessRules(Collections.emptySet(), Collections.emptySet());
-            byte[] bytecode = new ClassToolchain.Builder(cnt, ClassReader.EXPAND_FRAMES)
-                    .addNextVisitor(new UserClassMappingVisitor(new NamespaceMapper(emptyUserRuleRuleSet), preserveDebuggability))
-                    .addNextVisitor(new ClassShadowing(PackageConstants.kShadowSlashPrefix))
-                    .addWriter(new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS))
-                    .build()
-                    .runAndGetBytecode();
-            bytecode = new ClassToolchain.Builder(bytecode, ClassReader.EXPAND_FRAMES)
-                    .addNextVisitor(new ArrayWrappingClassAdapterRef())
-                    .addNextVisitor(new ArrayWrappingClassAdapter())
-                    .addWriter(new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS))
-                    .build()
-                    .runAndGetBytecode();
-
-            generatedClasses.put(name, bytecode);
-        }
-
         return generatedClasses;
     }
 

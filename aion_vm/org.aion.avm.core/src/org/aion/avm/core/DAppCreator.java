@@ -22,6 +22,7 @@ import org.aion.avm.core.rejection.RejectionClassVisitor;
 import org.aion.avm.core.shadowing.ClassShadowing;
 import org.aion.avm.core.shadowing.InvokedynamicShadower;
 import org.aion.avm.core.stacktracking.StackWatcherClassAdapter;
+import org.aion.avm.core.types.ClassHierarchy;
 import org.aion.avm.core.types.ClassInfo;
 import org.aion.avm.core.types.Forest;
 import org.aion.avm.core.types.GeneratedClassConsumer;
@@ -37,7 +38,6 @@ import org.aion.kernel.*;
 import org.aion.parallel.TransactionTask;
 import org.aion.types.Address;
 import org.aion.vm.api.interfaces.KernelInterface;
-import org.aion.vm.api.interfaces.TransactionInterface;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
@@ -83,20 +83,17 @@ public class DAppCreator {
      * Note that this is public since some unit tests call it, directly.
      *
      * @param inputClasses The class of DApp (names specified in .-style)
-     * @param preRenameClassHierarchy The pre-rename hierarchy of user-defined classes in the DApp (/-style).
+     * @param oldPreRenameForest The pre-rename forest of user-defined classes in the DApp (/-style).
+     * @param classHierarchy The class hierarchy of all classes in the system (.-style).
+     * @param preserveDebuggability Whether or not debug mode is enabled.
      * @return the transformed classes and any generated classes (names specified in .-style)
      */
-    public static Map<String, byte[]> transformClasses(Map<String, byte[]> inputClasses, Forest<String, ClassInfo> preRenameClassHierarchy, boolean preserveDebuggability) {
+    public static Map<String, byte[]> transformClasses(Map<String, byte[]> inputClasses, Forest<String, ClassInfo> oldPreRenameForest, ClassHierarchy classHierarchy, boolean preserveDebuggability) {
         // Before anything, pass the list of classes through the verifier.
         // (this will throw UncaughtException, on verification failure).
         Verifier.verifyUntrustedClasses(inputClasses);
-        
-        // Note:  preRenameUserDefinedClasses includes ONLY classes while preRenameUserClassAndInterfaceSet includes classes AND interfaces.
-        Set<String> preRenameUserDefinedClasses = ClassWhiteList.extractDeclaredClasses(preRenameClassHierarchy);
-        ParentPointers parentClassResolver = new ParentPointers(preRenameUserDefinedClasses, preRenameClassHierarchy, preserveDebuggability);
-        
         // We need to run our rejection filter and static rename pass.
-        Map<String, byte[]> safeClasses = rejectionAndRenameInputClasses(inputClasses, preRenameUserDefinedClasses, parentClassResolver, preserveDebuggability);
+        Map<String, byte[]> safeClasses = rejectionAndRenameInputClasses(inputClasses, classHierarchy, preserveDebuggability);
         
         // merge the generated classes and processed classes, assuming the package spaces do not conflict.
         Map<String, byte[]> processedClasses = new HashMap<>();
@@ -107,7 +104,7 @@ public class DAppCreator {
             String classDotName = Helpers.internalNameToFulllyQualifiedName(classSlashName);
             processedClasses.put(classDotName, bytecode);
         };
-        Map<String, Integer> postRenameObjectSizes = computeAllPostRenameObjectSizes(preRenameClassHierarchy, preserveDebuggability);
+        Map<String, Integer> postRenameObjectSizes = computeAllPostRenameObjectSizes(oldPreRenameForest, preserveDebuggability);
 
         Map<String, byte[]> transformedClasses = new HashMap<>();
 
@@ -127,16 +124,16 @@ public class DAppCreator {
                     .addNextVisitor(new InvokedynamicShadower(PackageConstants.kShadowSlashPrefix))
                     .addNextVisitor(new ClassShadowing(PackageConstants.kShadowSlashPrefix))
                     .addNextVisitor(new StackWatcherClassAdapter())
-                    .addNextVisitor(new ExceptionWrapping(parentClassResolver, generatedClassesSink))
+                    .addNextVisitor(new ExceptionWrapping(generatedClassesSink, classHierarchy))
                     .addNextVisitor(new AutomaticGraphVisitor())
                     .addNextVisitor(new StrictFPVisitor())
-                    .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, parentClassResolver))
+                    .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, classHierarchy, preserveDebuggability))
                     .build()
                     .runAndGetBytecode();
             bytecode = new ClassToolchain.Builder(bytecode, parsingOptions)
-                    .addNextVisitor(new ArrayWrappingClassAdapterRef())
+                    .addNextVisitor(new ArrayWrappingClassAdapterRef(classHierarchy))
                     .addNextVisitor(new ArrayWrappingClassAdapter())
-                    .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, parentClassResolver))
+                    .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, classHierarchy, preserveDebuggability))
                     .build()
                     .runAndGetBytecode();
             transformedClasses.put(name, bytecode);
@@ -144,55 +141,63 @@ public class DAppCreator {
 
         /*
          * Another pass to deal with static fields in interfaces.
+         * Note that all fields in interfaces are defined as static.
          */
-        GeneratedClassConsumer consumer = generatedClassesSink;
+
+        // We grab all of the user-defined interfaces.
+        Set<String> preRenameUserClassesAndInterfaces = classHierarchy.getPreRenameUserDefinedClassesAndInterfaces();
         Set<String> userInterfaceSlashNames = new HashSet<>();
-        preRenameClassHierarchy.walkPreOrder(new Forest.VisitorAdapter<>() {
-            public void onVisitRoot(Forest.Node<String, ClassInfo> root) {
-                // TODO: we have any interface with fields?
-            }
-            public void onVisitNotRootNode(Forest.Node<String, ClassInfo> node) {
-                if (node.getContent().isInterface()) {
-                    userInterfaceSlashNames.add(Helpers.fulllyQualifiedNameToInternalName(DebugNameResolver.getUserPackageDotPrefix(node.getId(), preserveDebuggability)));
+
+        for (String preRenameUserClassOrInterface : preRenameUserClassesAndInterfaces) {
+            if (preserveDebuggability) {
+                // In debug mode, our pre-rename classes are not renamed, so we query as if it is post-rename.
+                if (classHierarchy.postRenameTypeIsInterface(preRenameUserClassOrInterface)) {
+                    userInterfaceSlashNames.add(PackageConstants.kUserSlashPrefix + Helpers.fulllyQualifiedNameToInternalName(preRenameUserClassOrInterface));
+                }
+            } else {
+                if (classHierarchy.preRenameTypeIsInterface(preRenameUserClassOrInterface)) {
+                    userInterfaceSlashNames.add(PackageConstants.kUserSlashPrefix + Helpers.fulllyQualifiedNameToInternalName(preRenameUserClassOrInterface));
                 }
             }
-        });
+        }
+
         String javaLangObjectSlashName = PackageConstants.kShadowSlashPrefix + "java/lang/Object";
         for (String name : transformedClasses.keySet()) {
             byte[] bytecode = new ClassToolchain.Builder(transformedClasses.get(name), parsingOptions)
-                    .addNextVisitor(new InterfaceFieldMappingVisitor(consumer, userInterfaceSlashNames, javaLangObjectSlashName))
-                    .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, parentClassResolver))
+                    .addNextVisitor(new InterfaceFieldMappingVisitor(generatedClassesSink, userInterfaceSlashNames, javaLangObjectSlashName))
+                    .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, classHierarchy, preserveDebuggability))
                     .build()
                     .runAndGetBytecode();
+
             processedClasses.put(name, bytecode);
         }
 
         return processedClasses;
     }
 
-    public static void create(IExternalCapabilities capabilities, KernelInterface kernel, AvmInternal avm, TransactionTask task, TransactionInterface tx, AvmTransactionResult result, boolean preserveDebuggability, boolean verboseErrors) {
+    public static void create(IExternalCapabilities capabilities, KernelInterface kernel, AvmInternal avm, TransactionTask task, AvmTransaction tx, AvmTransactionResult result, boolean preserveDebuggability, boolean verboseErrors) {
         // Expose the DApp outside the try so we can detach from it, when we exit.
         LoadedDApp dapp = null;
         try {
             // read dapp module
-            Address dappAddress = capabilities.generateContractAddress(tx);
-            CodeAndArguments codeAndArguments = CodeAndArguments.decodeFromBytes(tx.getData());
+            Address dappAddress = tx.destinationAddress;
+            CodeAndArguments codeAndArguments = CodeAndArguments.decodeFromBytes(tx.data);
             if (codeAndArguments == null) {
                 if (verboseErrors) {
                     System.err.println("DApp deployment failed due to incorrectly packaged JAR and initialization arguments");
                 }
                 result.setResultCode(AvmTransactionResult.Code.FAILED_INVALID_DATA);
-                result.setEnergyUsed(tx.getEnergyLimit());
+                result.setEnergyUsed(tx.energyLimit);
                 return;
             }
 
-            RawDappModule rawDapp = RawDappModule.readFromJar(codeAndArguments.code);
+            RawDappModule rawDapp = RawDappModule.readFromJar(codeAndArguments.code, preserveDebuggability);
             if (rawDapp == null) {
                 if (verboseErrors) {
                     System.err.println("DApp deployment failed due to corrupt JAR data");
                 }
                 result.setResultCode(AvmTransactionResult.Code.FAILED_INVALID_DATA);
-                result.setEnergyUsed(tx.getEnergyLimit());
+                result.setEnergyUsed(tx.energyLimit);
                 return;
             }
 
@@ -203,20 +208,20 @@ public class DAppCreator {
                     System.err.println("DApp deployment failed due to " + explanation);
                 }
                 result.setResultCode(AvmTransactionResult.Code.FAILED_INVALID_DATA);
-                result.setEnergyUsed(tx.getEnergyLimit());
+                result.setEnergyUsed(tx.energyLimit);
                 return;
             }
             ClassHierarchyForest dappClassesForest = rawDapp.classHierarchyForest;
 
             // transform
-            Map<String, byte[]> transformedClasses = transformClasses(rawDapp.classes, dappClassesForest, preserveDebuggability);
+            Map<String, byte[]> transformedClasses = transformClasses(rawDapp.classes, dappClassesForest, rawDapp.classHierarchy, preserveDebuggability);
             TransformedDappModule transformedDapp = TransformedDappModule.fromTransformedClasses(transformedClasses, rawDapp.mainClass);
 
             dapp = DAppLoader.fromTransformed(transformedDapp, preserveDebuggability);
             
             // We start the nextHashCode at 1.
             int nextHashCode = 1;
-            InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.getEnergyLimit() - result.getEnergyUsed(), nextHashCode, new InternedClasses());
+            InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.getEnergyUsed(), nextHashCode, new InternedClasses());
             // (we pass a null reentrant state since we haven't finished initializing yet - nobody can call into us).
             IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(new BlockchainRuntimeImpl(capabilities, kernel, avm, null, task, tx, codeAndArguments.arguments, dapp.runtimeSetup));
 
@@ -255,9 +260,9 @@ public class DAppCreator {
             threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * rawGraphData.length);
             kernel.putObjectGraph(dappAddress, rawGraphData);
 
-            // TODO: whether we should return the dapp address is subject to change
+            // Return data of a CREATE transaction is the new DApp address.
             result.setResultCode(AvmTransactionResult.Code.SUCCESS);
-            result.setEnergyUsed(tx.getEnergyLimit() - threadInstrumentation.energyLeft());
+            result.setEnergyUsed(tx.energyLimit - threadInstrumentation.energyLeft());
             result.setReturnData(dappAddress.toBytes());
         } catch (OutOfEnergyException e) {
             if (verboseErrors) {
@@ -265,7 +270,7 @@ public class DAppCreator {
                 e.printStackTrace(System.err);
             }
             result.setResultCode(AvmTransactionResult.Code.FAILED_OUT_OF_ENERGY);
-            result.setEnergyUsed(tx.getEnergyLimit());
+            result.setEnergyUsed(tx.energyLimit);
 
         } catch (OutOfStackException e) {
             if (verboseErrors) {
@@ -273,7 +278,7 @@ public class DAppCreator {
                 e.printStackTrace(System.err);
             }
             result.setResultCode(AvmTransactionResult.Code.FAILED_OUT_OF_STACK);
-            result.setEnergyUsed(tx.getEnergyLimit());
+            result.setEnergyUsed(tx.energyLimit);
 
         } catch (CallDepthLimitExceededException e) {
             if (verboseErrors) {
@@ -281,7 +286,7 @@ public class DAppCreator {
                 e.printStackTrace(System.err);
             }
             result.setResultCode(AvmTransactionResult.Code.FAILED_CALL_DEPTH_LIMIT_EXCEEDED);
-            result.setEnergyUsed(tx.getEnergyLimit());
+            result.setEnergyUsed(tx.energyLimit);
 
         } catch (RevertException e) {
             if (verboseErrors) {
@@ -289,7 +294,7 @@ public class DAppCreator {
                 e.printStackTrace(System.err);
             }
             result.setResultCode(AvmTransactionResult.Code.FAILED_REVERT);
-            result.setEnergyUsed(tx.getEnergyLimit());
+            result.setEnergyUsed(tx.energyLimit);
 
         } catch (InvalidException e) {
             if (verboseErrors) {
@@ -297,7 +302,7 @@ public class DAppCreator {
                 e.printStackTrace(System.err);
             }
             result.setResultCode(AvmTransactionResult.Code.FAILED_INVALID);
-            result.setEnergyUsed(tx.getEnergyLimit());
+            result.setEnergyUsed(tx.energyLimit);
 
         } catch (UncaughtException e) {
             if (verboseErrors) {
@@ -305,7 +310,7 @@ public class DAppCreator {
                 e.printStackTrace(System.err);
             }
             result.setResultCode(AvmTransactionResult.Code.FAILED_EXCEPTION);
-            result.setEnergyUsed(tx.getEnergyLimit());
+            result.setEnergyUsed(tx.energyLimit);
 
             result.setUncaughtException(e.getCause());
         } catch (RejectedClassException e) {
@@ -314,11 +319,11 @@ public class DAppCreator {
                 e.printStackTrace(System.err);
             }
             result.setResultCode(AvmTransactionResult.Code.FAILED_REJECTED);
-            result.setEnergyUsed(tx.getEnergyLimit());
+            result.setEnergyUsed(tx.energyLimit);
 
         } catch (EarlyAbortException e) {
             if (verboseErrors) {
-                System.err.println("FYI - concurrent abort (will retry) in transaction \"" + Helpers.bytesToHexString(tx.getTransactionHash()) + "\"");
+                System.err.println("FYI - concurrent abort (will retry) in transaction \"" + Helpers.bytesToHexString(tx.transactionHash) + "\"");
             }
             result.setResultCode(AvmTransactionResult.Code.FAILED_ABORT);
             result.setEnergyUsed(0);
@@ -330,7 +335,7 @@ public class DAppCreator {
                 e.printStackTrace(System.err);
             }
             result.setResultCode(AvmTransactionResult.Code.FAILED);
-            result.setEnergyUsed(tx.getEnergyLimit());
+            result.setEnergyUsed(tx.energyLimit);
         } catch (JvmError e) {
             // These are cases which we know we can't handle and have decided to handle by safely stopping the AVM instance so
             // re-throw this as the AvmImpl top-level loop will commute it into an asynchronous shutdown.
@@ -361,10 +366,12 @@ public class DAppCreator {
         }
     }
 
-
-    private static Map<String, byte[]> rejectionAndRenameInputClasses(Map<String, byte[]> inputClasses, Set<String> preRenameUserDefinedClasses, ParentPointers parentClassResolver, boolean preserveDebuggability) {
+    private static Map<String, byte[]> rejectionAndRenameInputClasses(Map<String, byte[]> inputClasses, ClassHierarchy classHierarchy, boolean preserveDebuggability) {
         Map<String, byte[]> safeClasses = new HashMap<>();
-        Set<String> preRenameUserClassAndInterfaceSet = inputClasses.keySet();
+
+        Set<String> preRenameUserClassAndInterfaceSet = classHierarchy.getPreRenameUserDefinedClassesAndInterfaces();
+        Set<String> preRenameUserDefinedClasses = classHierarchy.getPreRenameUserDefinedClassesOnly(preserveDebuggability);
+
         PreRenameClassAccessRules preRenameClassAccessRules = new PreRenameClassAccessRules(preRenameUserDefinedClasses, preRenameUserClassAndInterfaceSet);
         NamespaceMapper namespaceMapper = new NamespaceMapper(preRenameClassAccessRules);
         
@@ -377,8 +384,7 @@ public class DAppCreator {
                     .addNextVisitor(new RejectionClassVisitor(preRenameClassAccessRules, namespaceMapper, preserveDebuggability))
                     .addNextVisitor(new LoopingExceptionStrippingVisitor())
                     .addNextVisitor(new UserClassMappingVisitor(namespaceMapper, preserveDebuggability))
-                    // (note that we need to pass a bogus HierarchyTreeBuilder into the class writer - can be empty, but not null)
-                    .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, parentClassResolver))
+                    .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, classHierarchy, preserveDebuggability))
                     .build()
                     .runAndGetBytecode();
             String mappedName = DebugNameResolver.getUserPackageDotPrefix(name, preserveDebuggability);

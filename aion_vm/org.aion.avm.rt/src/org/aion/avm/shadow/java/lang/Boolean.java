@@ -1,21 +1,20 @@
 package org.aion.avm.shadow.java.lang;
 
-import org.aion.avm.internal.IInstrumentation;
-import org.aion.avm.internal.IObject;
-import org.aion.avm.internal.RuntimeAssertionError;
+import org.aion.avm.internal.*;
 import org.aion.avm.RuntimeMethodFeeSchedule;
+import org.aion.avm.shadow.java.io.Serializable;
 
-public class Boolean extends Object implements Comparable<Boolean> {
+public final class Boolean extends Object implements Serializable, Comparable<Boolean> {
     static {
         // Shadow classes MUST be loaded during bootstrap phase.
         IInstrumentation.attachedThreadInstrumentation.get().bootstrapOnly();
     }
 
-    public static final Boolean avm_TRUE = new Boolean(true);
+    public static final Boolean avm_TRUE = new Boolean(true, new ConstantToken(ShadowClassConstantId.Boolean_avm_TRUE));
 
-    public static final Boolean avm_FALSE = new Boolean(false);
+    public static final Boolean avm_FALSE = new Boolean(false, new ConstantToken(ShadowClassConstantId.Boolean_avm_FALSE));
 
-    public static final Class<Boolean> avm_TYPE = new Class(java.lang.Boolean.TYPE);
+    public static final Class<Boolean> avm_TYPE = new Class(java.lang.Boolean.TYPE, new ConstantToken(ShadowClassConstantId.Boolean_avm_TYPE));
 
     // These are the constructors provided in the JDK but we mark them private since they are deprecated.
     // (in the future, we may change these to not exist - depends on the kind of error we want to give the user).
@@ -123,6 +122,10 @@ public class Boolean extends Object implements Comparable<Boolean> {
         lazyLoad();
     }
 
+    private Boolean(boolean b, ConstantToken constantToken){
+        super(constantToken);
+        this.v = b;
+    }
     private boolean v;
 
     public boolean getUnderlying() {

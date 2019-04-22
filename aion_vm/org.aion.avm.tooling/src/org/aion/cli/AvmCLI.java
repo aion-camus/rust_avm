@@ -72,10 +72,6 @@ public class AvmCLI {
         reportCallRequest(env, storagePath, contract, sender, method, args);
 
         byte[] arguments = ABIUtil.encodeMethodArguments(method, args);
-        for (byte item: arguments) {
-            System.out.printf("%2x ", item);
-        }
-        
         return commonSetupTransaction(env, storagePath, contract, sender, arguments, energyLimit, nonceBias, balance);
     }
 
@@ -99,7 +95,7 @@ public class AvmCLI {
 
         TestingKernel kernel = new TestingKernel(storageFile, block);
 
-        // TODO:  Remove this bias when/if we change this to no longer send all transactions from the same account.
+        // Note that we can remove this bias when/if we change this to no longer send all transactions from the same account.
         BigInteger biasedNonce = kernel.getNonce(sender).add(BigInteger.valueOf(nonceBias));
         return Transaction.call(sender, target, biasedNonce, balance, data, energyLimit, 1L);
     }
