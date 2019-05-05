@@ -39,8 +39,8 @@
             </classpath>
         </javac>
 
-        <exec executable="g++">
-            <arg line="-std=c++0x -I. -I${java.home}/include -I${java.home}/include/linux -O3 -Wall -fPIC ./native/org_aion_avm_jni_NativeKernelInterface.cpp -L${build.dir} -Wl,--no-undefined -Wl,-soname=libavmjni.so -shared -o ${build.dir}/libavmjni.so"/>
+        <exec executable="make">
+          <arg line="-C native"></arg>
         </exec>
     </target>
 

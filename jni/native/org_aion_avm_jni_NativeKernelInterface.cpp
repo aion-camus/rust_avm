@@ -1,8 +1,8 @@
 #include "org_aion_avm_jni_NativeKernelInterface.h"
 #include "avm.h"
 
-#include <cstring>
-#include <iostream>
+//#include <cstring>
+//#include <iostream>
 
 #define ADDRESS_LENGTH sizeof(avm_address)
 #define VALUE_LENGTH   sizeof(avm_value)
@@ -13,6 +13,10 @@ using namespace std;
  * Global callback registry.
  */
 struct avm_callbacks callbacks;
+
+jint JNI_OnLoad_avmjni() {
+  return JNI_VERSION_10;
+}
 
 /**
  * Returns whether the byte array is NULL.

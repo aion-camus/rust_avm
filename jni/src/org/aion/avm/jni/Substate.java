@@ -131,7 +131,8 @@ public class Substate implements KernelInterface {
     @Override
     public BigInteger getBalance(Address address) {
         if (debug) {
-            System.out.println("avm substate: getBalance");
+            System.out.printf("JNI: getBalance of ");
+            System.out.println(address);
         }
         BigInteger balance = this.balances.get(address);
         if (null == balance) {
@@ -156,8 +157,11 @@ public class Substate implements KernelInterface {
 
     @Override
     public BigInteger getNonce(Address address) {
-        System.out.print("try getNonce of: ");
-        System.out.println(address);
+        if (debug) {
+            System.out.print("JNI: try getNonce of: ");
+            System.out.println(address);
+        }
+        
         BigInteger nonce = this.nonces.get(address);
         if (nonce == null) {
             nonce = this.parent.getNonce(address);
@@ -235,7 +239,9 @@ public class Substate implements KernelInterface {
     @Override
     public byte[] getObjectGraph(Address a) {
         if (this.objectGraphs.get(a) == null) {
-            System.out.println("try updating object graph");
+            if (debug) {
+                System.out.println("JNI: try updating object graph");
+            }
             byte[] graph = parent.getObjectGraph(a);
             this.objectGraphs.put(a, graph);
             return graph;
@@ -246,6 +252,10 @@ public class Substate implements KernelInterface {
 
     @Override
     public void putObjectGraph(Address a, byte[] data) {
+        if (debug) {
+            System.out.printf("JNI: save object graph at ");
+            System.out.println(a);
+        }
         this.objectGraphs.put(a, data);
         Consumer<KernelInterface> write = (kernel) -> {
             kernel.putObjectGraph(a, data);
@@ -272,7 +282,10 @@ public class Substate implements KernelInterface {
     // Camus: this should not be in kernel interface
     @Override
     public Address getMinerAddress() {
-        System.out.printf("Try to get miner address\n");
+        if (debug) {
+            System.out.printf("JNI: try to get miner address\n");
+        }
+        
         return this.info.coinbase;
     }
 

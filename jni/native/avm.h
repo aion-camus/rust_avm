@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <malloc.h>
+#include <string.h>
 
 #if __cplusplus
 extern "C" {
@@ -209,6 +211,8 @@ extern struct avm_bytes new_null_bytes();
  * Releases a byte array.
  */
 extern void release_bytes(struct avm_bytes *bytes);
+
+extern jint JNI_OnLoad_avmjni();
 
 #if __cplusplus
 }

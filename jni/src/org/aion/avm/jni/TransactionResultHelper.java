@@ -31,6 +31,7 @@ public class TransactionResultHelper {
         } else if (code.isSuccess()) {
             return 0;
         } else {
+            // workaround for Revert status
             return -1;
         }
     }
