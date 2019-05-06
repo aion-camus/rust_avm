@@ -78,9 +78,13 @@ public class NativeTransactionExecutor {
                     kernel.addLog(logEncoder.toByteArray(), i);
                 }
                 
-                System.out.println("commit result to kernel");
+                // if (Constants.DEBUG) {
+                //     System.out.println("commit result to kernel");
+                // }
                 transactionKernel.commitTo(kernel);
-                System.out.println("Native commit done");
+                // if (Constants.DEBUG) {
+                //     System.out.println("Native commit done");
+                // }
                 byte[] state_root = kernel.sendSignal(0);   // 0: should commit state; and return state root
                 encoder.encodeBytes(state_root);
             }

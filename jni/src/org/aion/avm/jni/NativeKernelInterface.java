@@ -86,7 +86,7 @@ public class NativeKernelInterface implements KernelInterface {
 
     @Override
     public void adjustBalance(Address address, BigInteger delta) {
-        System.out.println(String.format("Native: avm adjust balance: %d", delta.longValue()));
+        // System.out.println(String.format("Native: avm adjust balance: %d", delta.longValue()));
         if (delta.signum() > 0) {
             increaseBalance(handle, address.toBytes(), delta.toByteArray());
         } else if (delta.signum() < 0) {
@@ -132,7 +132,7 @@ public class NativeKernelInterface implements KernelInterface {
 
     @Override
     public void payMiningFee(Address address, BigInteger fee) {
-        System.out.println("Native: avm trys to pay mining fee");
+        // System.out.println("Native: avm trys to pay mining fee");
         // This method may have special logic in the kernel. Here it is just adjustBalance.
         adjustBalance(address, fee);
     }
@@ -151,7 +151,8 @@ public class NativeKernelInterface implements KernelInterface {
 
     @Override
     public void removeStorage(Address address, byte[] key) {
-        System.out.println("Native: remove storage");
+        // System.out.println("Native: remove storage");
+        putStorage(address, key, new byte[0]);
     }
 
     @Override

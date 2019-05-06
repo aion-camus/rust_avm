@@ -20,12 +20,12 @@ public class Substate implements KernelInterface {
     private final HashMap<Address, BigInteger> balances;
     /// cached object graph
     private final HashMap<Address, byte[]> objectGraphs;
-    /// created accounts
-    // private final HashSet<Address> newAccounts;
+    /// storage keys and values
+    private final HashMap<Address, HashSet<byte[]>> keys;
+    private final HashMap<byte[], byte[]> values;
+    
     /// block info (act as env info)
     private EnvInfo info;
-
-    static boolean debug = true;
 
     private class EnvInfo {
         private Address coinbase;
@@ -41,6 +41,8 @@ public class Substate implements KernelInterface {
         this.nonces = new HashMap<>();
         this.balances = new HashMap<>();
         this.objectGraphs = new HashMap<>();
+        this.keys = new HashMap<>();
+        this.values = new HashMap<>();
         this.info = new EnvInfo();
     }
 
@@ -55,7 +57,7 @@ public class Substate implements KernelInterface {
 
     @Override
     public void createAccount(Address address) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.printf("JNI: create account: %s", address);
         }
         Consumer<KernelInterface> write = (kernel) -> {
@@ -66,7 +68,7 @@ public class Substate implements KernelInterface {
 
     @Override
     public boolean hasAccountState(Address address) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.printf("JNI: check account state: %s", address);
         }
         return this.parent.hasAccountState(address);
@@ -74,7 +76,7 @@ public class Substate implements KernelInterface {
 
     @Override
     public void putCode(Address address, byte[] code) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.printf("JNI: save code: %s", address);
         }
         Consumer<KernelInterface> write = (kernel) -> {
@@ -85,7 +87,7 @@ public class Substate implements KernelInterface {
 
     @Override
     public byte[] getCode(Address address) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.printf("JNI: get code of %s", address);
         }
         return this.parent.getCode(address);
@@ -93,21 +95,54 @@ public class Substate implements KernelInterface {
 
     @Override
     public void putStorage(Address address, byte[] key, byte[] value) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.printf("JNI: put storage");
         }
         Consumer<KernelInterface> write = (kernel) -> {
             kernel.putStorage(address, key, value);
         };
         writeLog.add(write);
+
+        HashSet<byte[]> keySet = this.keys.get(address);
+        if (keySet == null) {
+            this.keys.put(address, new HashSet<>());
+            this.keys.get(address).add(key);
+            this.values.put(key, value);
+        } else {
+            // key set is not null but the key is not found
+            keySet.add(key);
+            this.values.put(key, value);
+        }
+
+        
     }
 
     @Override
     public byte[] getStorage(Address address, byte[] key) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.printf("JNI: get storage");
         }
-        return this.parent.getStorage(address, key);
+
+        byte[] value;
+        HashSet<byte[]> localKeys = this.keys.get(address);
+        if (null == localKeys) {
+            value = this.parent.getStorage(address, key);
+            this.keys.put(address, new HashSet<>());
+            this.keys.get(address).add(key);
+            this.values.put(key, value);
+        } else {
+            // has local keys
+            if (localKeys.contains(key)) {
+                value = this.values.get(key);
+            } else {
+                value = this.parent.getStorage(address, key);
+                // key/value always update together
+                localKeys.add(key);
+                this.values.put(key, value);
+            }
+        }
+
+        return value;
     }
 
     @Override
@@ -120,7 +155,7 @@ public class Substate implements KernelInterface {
 
     @Override
     public boolean accountNonceEquals(Address address, BigInteger nonce) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.print("current Nonce = ");
             System.out.println(getNonce(address));
         }
@@ -130,7 +165,7 @@ public class Substate implements KernelInterface {
 
     @Override
     public BigInteger getBalance(Address address) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.printf("JNI: getBalance of ");
             System.out.println(address);
         }
@@ -144,7 +179,7 @@ public class Substate implements KernelInterface {
 
     @Override
     public void adjustBalance(Address address, BigInteger delta) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.printf("try adjust balance: %d\n", delta.longValue());
         }
         Consumer<KernelInterface> write = (kernel) -> {
@@ -157,7 +192,7 @@ public class Substate implements KernelInterface {
 
     @Override
     public BigInteger getNonce(Address address) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.print("JNI: try getNonce of: ");
             System.out.println(address);
         }
@@ -239,7 +274,7 @@ public class Substate implements KernelInterface {
     @Override
     public byte[] getObjectGraph(Address a) {
         if (this.objectGraphs.get(a) == null) {
-            if (debug) {
+            if (Constants.DEBUG) {
                 System.out.println("JNI: try updating object graph");
             }
             byte[] graph = parent.getObjectGraph(a);
@@ -252,7 +287,7 @@ public class Substate implements KernelInterface {
 
     @Override
     public void putObjectGraph(Address a, byte[] data) {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.printf("JNI: save object graph at ");
             System.out.println(a);
         }
@@ -282,7 +317,7 @@ public class Substate implements KernelInterface {
     // Camus: this should not be in kernel interface
     @Override
     public Address getMinerAddress() {
-        if (debug) {
+        if (Constants.DEBUG) {
             System.out.printf("JNI: try to get miner address\n");
         }
         
