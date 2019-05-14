@@ -2,7 +2,6 @@ package org.aion.avm.jni;
 
 import org.aion.vm.api.interfaces.TransactionSideEffects;
 import org.aion.vm.api.interfaces.TransactionInterface;
-import org.aion.avm.internal.RuntimeAssertionError;
 import org.aion.avm.core.BillingRules;
 
 import org.aion.types.Address;
@@ -105,7 +104,8 @@ public class Message implements TransactionInterface {
 
     @Override
     public byte getKind() {
-        System.out.printf("message: getKind = %d\n", toAvmType(type).toInt());
+        if (Constants.DEBUG)
+            System.out.printf("message: getKind = %d\n", toAvmType(type).toInt());
         return toAvmType(type).toByte();
     }
 
@@ -186,7 +186,8 @@ public class Message implements TransactionInterface {
 
     @Override
     public long getTransactionCost() {
-        System.out.println("AVM getTransactionCost");
+        if (Constants.DEBUG)
+            System.out.println("AVM getTransactionCost");
         return BillingRules.getBasicTransactionCost(getData());
     }
 

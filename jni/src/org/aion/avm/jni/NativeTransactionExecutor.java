@@ -10,7 +10,6 @@ import org.aion.avm.core.AvmImpl;
 import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.core.IExternalCapabilities;
 import org.aion.avm.core.AvmConfiguration;
-import org.aion.avm.internal.RuntimeAssertionError;
 import org.aion.avm.tooling.StandardCapabilities;
 import org.aion.kernel.AvmTransactionResult;
 import org.aion.kernel.TransactionalKernel;
@@ -26,7 +25,7 @@ public class NativeTransactionExecutor {
      * @param txs    serialized list of transaction contexts, using the Native Codec
      * @return serialized list of transaction result, using the Native Codec
      */
-    public static byte[] execute(long handle, byte[] txs) {
+    public static byte[] execute(long handle, byte[] txs, boolean is_local) {
         try {
             // deserialize the transaction contexts
             // the paralleled transactions should have the same block info
@@ -46,14 +45,14 @@ public class NativeTransactionExecutor {
             }
 
             AvmConfiguration config = new AvmConfiguration();
-            config.enableVerboseConcurrentExecutor = true;
+            if (Constants.DEBUG)
+                config.enableVerboseConcurrentExecutor = true;
             AvmImpl avm = CommonAvmFactory.buildAvmInstanceForConfiguration(new AionCapabilities(), config);
             SimpleFuture<TransactionResult>[] futures = avm.run(substate, contexts);
 
             // wait for the transaction results and serialize them into bytes
             NativeEncoder encoder = new NativeEncoder();
             encoder.encodeInt(futures.length);
-            System.out.println("wait futures");
             for (int i = 0; i < futures.length; i++) {
                 TransactionResult r = futures[i].get();
                 encoder.encodeBytes(TransactionResultHelper.encodeTransactionResult(r));
@@ -66,30 +65,29 @@ public class NativeTransactionExecutor {
                 //     kernel.touchAccount(addr, i);
                 // }
                 
-                TransactionSideEffects sideEffects = r.getSideEffects();
-                for (IExecutionLog log: sideEffects.getExecutionLogs()) {
-                    NativeEncoder logEncoder = new NativeEncoder();
-                    logEncoder.encodeBytes(log.getSourceAddress().toBytes());
-                    logEncoder.encodeInt(log.getTopics().size());
-                    for (byte[] topic: log.getTopics()) {
-                        logEncoder.encodeBytes(topic);
+                byte[] state_root;
+                if (is_local) {
+                    state_root = kernel.sendSignal(1);
+                } else {
+                    TransactionSideEffects sideEffects = r.getSideEffects();
+                    for (IExecutionLog log: sideEffects.getExecutionLogs()) {
+                        NativeEncoder logEncoder = new NativeEncoder();
+                        logEncoder.encodeBytes(log.getSourceAddress().toBytes());
+                        logEncoder.encodeInt(log.getTopics().size());
+                        for (byte[] topic: log.getTopics()) {
+                            logEncoder.encodeBytes(topic);
+                        }
+                        logEncoder.encodeBytes(log.getData());
+                        kernel.addLog(logEncoder.toByteArray(), i);
                     }
-                    logEncoder.encodeBytes(log.getData());
-                    kernel.addLog(logEncoder.toByteArray(), i);
+                    transactionKernel.commitTo(kernel);
+                    // 0: should commit state; and return state root
+                    state_root = kernel.sendSignal(0);
                 }
-                
-                // if (Constants.DEBUG) {
-                //     System.out.println("commit result to kernel");
-                // }
-                transactionKernel.commitTo(kernel);
-                // if (Constants.DEBUG) {
-                //     System.out.println("Native commit done");
-                // }
-                byte[] state_root = kernel.sendSignal(0);   // 0: should commit state; and return state root
+                   
                 encoder.encodeBytes(state_root);
             }
             kernel.sendSignal(-1);
-            // substate.commit();
             avm.shutdown();
 
             return encoder.toByteArray();

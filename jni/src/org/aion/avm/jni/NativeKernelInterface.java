@@ -162,13 +162,11 @@ public class NativeKernelInterface implements KernelInterface {
 
     @Override
     public byte[] getObjectGraph(Address a) {
-        System.out.println("Native: get object graph");
         return getObjectGraph(handle, a.toBytes());
     }
 
     @Override
     public void putObjectGraph(Address a, byte[] data) {
-        System.out.println("put object graph");
         setObjectGraph(handle, a.toBytes(), data);
     }
 
